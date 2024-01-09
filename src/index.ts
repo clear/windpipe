@@ -86,16 +86,10 @@ class Stream<TValue> {
     }
 
     delay(ms: number): Stream<TValue> {
-        return new Stream((cb) => {
-            const then = Date.now();
-
-            this.next((value) => {
-                const now = Date.now();
-
-                setTimeout(() => {
-                    cb(value);
-                }, ms - (now - then));
-            });
+        return this.consume((value, done) => {
+            setTimeout(() => {
+                done(value);
+            }, ms);
         });
     }
 
@@ -120,7 +114,6 @@ class Stream<TValue> {
             if (value === STREAM_END) {
                 done(array, STREAM_END);
             } else {
-                console.log("saving", value);
                 array.push(value);
 
                 // Continually retry to pull everything out of the stream
@@ -153,26 +146,25 @@ async function run() {
         2,
         3
     ])
-    // .delay(1000)
     .consume((value, done) => {
         if (value === STREAM_END) {
             done(STREAM_END);
         } else {
-            console.log("double", value);
             done(value, value * 10);
         }
     })
+    .delay(250)
     // TODO: Fix inference
     .map((value) => (value as number).toString(10));
 
-    s.toArray((array) => {
-        console.log("finished");
-        console.log(array);
-    });
+    // s.toArray((array) => {
+    //     console.log("finished");
+    //     console.log(array);
+    // });
 
-    // for await (let value of s) {
-    //     console.log(value);
-    // }
+    for await (let value of s) {
+        console.log(value);
+    }
 
     console.log("async done");
 }
