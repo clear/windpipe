@@ -4,22 +4,15 @@ type StreamAtom<TValue> = TValue | typeof STREAM_END;
 type NextValueCallback<TValue> = (cb: (value: StreamAtom<TValue>) => void) => void;
 
 /**
- * Consume a stream, value by value, pushing values onto a new stream. Per invocation, only **one**
- * of `push` or `retry` can be called. Calling both is invalid.
+ * Consume a stream, value by value, pushing values onto a new stream.
  *
- * Ideally, it would be best to somehow detect whether a value was pushed to the consumer, and if
- * nothing was automatically retry.
- *
- * # Alternate API:
- *
- * Consumer simply gets a `done` callback, which takes an array of items to push. This can be
+ * Consumer simply gets a `done` callback, which takes any items to push. This can be
  * called with undefined/empty array to trigger an automatic retry.
  *
- * @param value - Value being emitted in the stream
- * @param push - Callback function to emit a new value down the stream
- * @param retry - Callback function to retry the consumer, useful if no values are pushed downstream
+ * @param value - Value being emitted in the stream.
+ * @param done - Callback to be passed values to be pushed onto new stream
  */
-type Consumer<TValue, TValue_> = (value: StreamAtom<TValue>, push: (value: StreamAtom<TValue_>) => void, retry: () => void) => void;
+type Consumer<TValue, TValue_> = (value: StreamAtom<TValue>, done: (...values: Array<StreamAtom<TValue_>>) => void) => void;
 
 class Stream<TValue> {
     get_next_value: NextValueCallback<TValue>;
@@ -43,64 +36,34 @@ class Stream<TValue> {
 
     // De-dupe value callbacks
     consume<TValue_>(consumer: Consumer<TValue, TValue_>): Stream<TValue_> {
-        // Must give consumer following arguments:
-        // - value: The last value emitted from the stream
-        // - push: A method to add a new value to the resulting stream (can be re-used)
-        // - retry: A method that will get the next item from downstream and pass it through the consumer
-
         let queue: Array<StreamAtom<TValue_>> = [];
 
         return new Stream((provide_value) => {
             let value_provided = false;
 
             const emit_value = () => {
-                if (!value_provided) {
-                    if (queue.length > 0) {
-                        // Value remains in queue, fetch it before continuing
-                        value_provided = true;
-                        return provide_value(queue.shift() as any);
-                    } else {
-                        // Queue is empty, which means that no values were pushed. Try again.
-                        console.warn("somehow ended up with an empty queue");
-                        // return provide_value(STREAM_END);
-                    }
+                if (queue.length > 0) {
+                    // Value remains in queue, fetch it before continuing
+                    value_provided = true;
+                    return provide_value(queue.shift() as any);
+                } else {
+                    feed_consumer();
                 }
             }
             
             const feed_consumer = () => {
-                let retry_called = false;
-                let push_called = false;
-
                 // Make sure that queue has some values in it
                 if (queue.length === 0) {
                     // Get the value from upstream
                     this.next((value) => {
-                        // Take value, and add it to the end of the queue
-                        const push = (value: StreamAtom<TValue_>) => {
-                            console.log("pushing", value);
+                        // Pass it to the consumer
+                        consumer(value, (...values) => {
+                            // Update the queue
+                            queue = queue.concat(values);
 
-                            if (!retry_called) {
-                                push_called = true;
-
-                                queue.push(value);
-                                emit_value();
-                            } else {
-                                console.error("retry and push cannot be called together");
-                            }
-                        };
-
-                        // Consumer wasn't fed, try it agaian
-                        const retry = () => {
-                            if (!push_called) {
-                                retry_called = true;
-
-                                feed_consumer();
-                            } else {
-                                console.error("retry and push cannot be called together");
-                            }
-                        };
-
-                        consumer(value, push, retry);
+                            // Emit value
+                            emit_value();
+                        });
                     });
                 } else {
                     // There's a value in the queue, emit it without calling the consumer
@@ -108,16 +71,16 @@ class Stream<TValue> {
                 }
             };
 
-            feed_consumer();
+            emit_value();
         });
     }
 
     map<TValue_>(op: (value: TValue) => TValue_): Stream<TValue_> {
-        return this.consume((value, push, _retry) => {
+        return this.consume((value, done) => {
             if (value === STREAM_END) {
-                push(STREAM_END);
+                done(STREAM_END);
             } else {
-                push(op(value));
+                done(op(value));
             }
         });
     }
@@ -153,16 +116,15 @@ class Stream<TValue> {
     toArray(cb: (array: Array<TValue>) => void) {
         const array: Array<TValue> = [];
 
-        this.consume((value, push, retry) => {
+        this.consume((value, done) => {
             if (value === STREAM_END) {
-                push(array);
-                push(STREAM_END);
+                done(array, STREAM_END);
             } else {
                 console.log("saving", value);
                 array.push(value);
 
                 // Continually retry to pull everything out of the stream
-                retry();
+                done();
             }
         })
             .next((value: any) => cb(value));
@@ -192,17 +154,16 @@ async function run() {
         3
     ])
     // .delay(1000)
-    .consume((value, push, _retry) => {
+    .consume((value, done) => {
         if (value === STREAM_END) {
-            push(STREAM_END);
+            done(STREAM_END);
         } else {
             console.log("double", value);
-            push(value);
-            push(value * 10);
+            done(value, value * 10);
         }
     })
     // TODO: Fix inference
-    // .map((value) => (value as number).toString(10));
+    .map((value) => (value as number).toString(10));
 
     s.toArray((array) => {
         console.log("finished");
