@@ -162,6 +162,13 @@ class Stream<TValue> {
             cb(value);
             done();
         })
+            .exhaust();
+    }
+
+    exhaust() {
+        this.consume((_value, done) => {
+            done();
+        })
             .next(nop);
     }
 
