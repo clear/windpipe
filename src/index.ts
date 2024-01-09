@@ -106,6 +106,18 @@ class Stream<TValue> {
         })
     }
 
+    push(value: TValue): Stream<TValue> {
+        let pushed = false;
+        return this.consume((next_value, done) => {
+            if (next_value === STREAM_END && !pushed) {
+                pushed = true;
+                done(value, STREAM_END);
+            } else {
+                done(next_value);
+            }
+        });
+    }
+
     map<TValue_>(op: (value: TValue) => TValue_): Stream<TValue_> {
         return this.consume_bounded((value, done) => {
             done(op(value));
