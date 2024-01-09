@@ -77,24 +77,43 @@ class Stream<TValue> {
         });
     }
 
-    map<TValue_>(op: (value: TValue) => TValue_): Stream<TValue_> {
+    /**
+     * Like `consume`, however ensures that the stream end marker won't be encountered by the
+     * handler, and prevents the stream end marker from being emitted by a handler. Useful for
+     * avoiding boilerplate:
+     *
+     * ```
+     * stream.consume((value, done) => {
+     *     if (value === STREAM_END) {
+     *         done(STREAM_END);
+     *     } else {
+     *         // Some operations with value
+     *         done(result_a, result_b);
+     *     }
+     * });
+     * ```
+     * `
+     */
+    consume_bounded<TValue_>(consumer: (value: TValue, done: (...values: Array<TValue_>) => void) => void): Stream<TValue_> {
         return this.consume((value, done) => {
             if (value === STREAM_END) {
                 done(STREAM_END);
             } else {
-                done(op(value));
+                consumer(value, done);
             }
+        })
+    }
+
+    map<TValue_>(op: (value: TValue) => TValue_): Stream<TValue_> {
+        return this.consume_bounded((value, done) => {
+            done(op(value));
         });
     }
 
     tap(op: (value: TValue) => void): Stream<TValue> {
-        return this.consume((value, done) => {
-            if (value === STREAM_END) {
-                done(STREAM_END);
-            } else {
-                op(value);
-                done(value);
-            }
+        return this.consume_bounded((value, done) => {
+            op(value);
+            done(value);
         });
     }
 
@@ -123,7 +142,7 @@ class Stream<TValue> {
     toArray(cb: (array: Array<TValue>) => void) {
         const array: Array<TValue> = [];
 
-        this.consume((value, done) => {
+        this.consume<typeof array>((value, done) => {
             if (value === STREAM_END) {
                 done(array, STREAM_END);
             } else {
@@ -160,12 +179,8 @@ async function run() {
         3,
         4,
     ])
-    .consume<number>((value, done) => {
-        if (value === STREAM_END) {
-            done(STREAM_END);
-        } else {
-            done(value, value * 10);
-        }
+    .consume_bounded<number>((value, done) => {
+        done(value, value * 10);
     })
     .tap((value) => console.log("the value is", value))
     .delay(250)
