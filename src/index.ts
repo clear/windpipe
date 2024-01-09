@@ -1,24 +1,24 @@
 const STREAM_END = Symbol.for("STREAM_END");
 
 type StreamAtom<TValue> = TValue | typeof STREAM_END;
-type NextValueCallback<TValue> = () => StreamAtom<TValue>;
+type NextValueCallback<TValue> = (cb: (value: StreamAtom<TValue>) => void) => void;
 
 class Stream<TValue> {
-    next_value: NextValueCallback<TValue>;
+    get_next_value: NextValueCallback<TValue>;
 
     constructor(next_value: NextValueCallback<TValue>) {
-        this.next_value = next_value;
+        this.get_next_value = next_value;
     }
 
     map<TValue_>(op: (value: TValue) => TValue_): Stream<TValue_> {
-        return new Stream(() => {
-            const next = this.next_value();
-
-            if (next === STREAM_END) {
-                return STREAM_END;
-            } else {
-                return op(next);
-            }
+        return new Stream((cb) => {
+            this.get_next_value((value) => {
+                if (value === STREAM_END) {
+                    cb(STREAM_END);
+                } else {
+                    cb(op(value));
+                }
+            });
         });
     }
 
@@ -36,38 +36,47 @@ class Stream<TValue> {
     //   }
     // }
 
-    toArray(): Array<TValue> {
-        let arr = [];
-        let value;
+    toArray(cb: (array: Array<TValue>) => void) {
+        let array: Array<TValue> = [];
 
-        while ((value = this.next_value()) !== STREAM_END) {
-            arr.push(value);
-        }
+        const recurse = () => {
+            this.get_next_value((value) => {
+                if (value === STREAM_END) {
+                    cb(array);
+                } else {
+                    array.push(value);
+                    recurse();
+                }
+            });
+        };
 
-        return arr;
+        recurse();
     }
 
     static from<TValue>(values: Iterable<TValue>): Stream<TValue> {
         const iter = values[Symbol.iterator]();
 
-        return new Stream(() => {
+        return new Stream((cb) => {
             let result: IteratorResult<TValue, unknown> = iter.next();
 
             if (result.done) {
-                return STREAM_END;
+                cb(STREAM_END);
             } else {
-                return result.value;
+                cb(result.value);
             }
         });
     }
 };
 
-const s = Stream.from([
+console.log("running");
+
+Stream.from([
     1,
     2,
     3
 ])
-.map((value) => value.toString(10))
-.toArray();
+    .map((value) => value.toString(10))
+    .toArray((array) => {
+        console.log(array);
+    });
 
-console.log(s);
