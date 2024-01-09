@@ -22,19 +22,35 @@ class Stream<TValue> {
         });
     }
 
-    [Symbol.iterator]() {
+    delay(ms: number): Stream<TValue> {
+        return new Stream((cb) => {
+            const then = Date.now();
+
+            this.get_next_value((value) => {
+                const now = Date.now();
+
+                setTimeout(() => {
+                    cb(value);
+                }, ms - (now - then));
+            });
+        });
+    }
+
+    [Symbol.asyncIterator]() {
         return this;
     }
 
-    // next(): IteratorResult<TValue, void> {
-    //   let result = this.next_value();
-
-    //   if (result == STREAM_END) {
-    //     return { done: true };
-    //   } else {
-    //     return { done: false, value: result };
-    //   }
-    // }
+    next(): Promise<IteratorResult<TValue, void>> {
+        return new Promise((resolve) => {
+            this.get_next_value((value) => {
+                if (value === STREAM_END) {
+                    resolve({ done: true, value: undefined });
+                } else {
+                    resolve({ done: false, value });
+                }
+            });
+        });
+    }
 
     toArray(cb: (array: Array<TValue>) => void) {
         let array: Array<TValue> = [];
@@ -70,13 +86,16 @@ class Stream<TValue> {
 
 console.log("running");
 
-Stream.from([
+let s = Stream.from([
     1,
     2,
     3
 ])
-    .map((value) => value.toString(10))
-    .toArray((array) => {
-        console.log(array);
-    });
+    .delay(1000)
+    .map((value) => value.toString(10));
 
+for await (let value of s) {
+    console.log(value);
+}
+
+console.log("async done");

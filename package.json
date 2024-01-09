@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "lint": "tsc",
     "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm",
