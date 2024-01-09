@@ -14,6 +14,8 @@ type NextValueCallback<TValue> = (cb: (value: StreamAtom<TValue>) => void) => vo
  */
 type Consumer<TValue, TValue_> = (value: StreamAtom<TValue>, done: (...values: Array<StreamAtom<TValue_>>) => void) => void;
 
+const nop = () => {};
+
 class Stream<TValue> {
     get_next_value: NextValueCallback<TValue>;
 
@@ -155,6 +157,14 @@ class Stream<TValue> {
             .next((value: any) => cb(value));
     }
 
+    forEach(cb: (value: TValue) => void) {
+        this.consume_bounded((value, done) => {
+            cb(value);
+            done();
+        })
+            .next(nop);
+    }
+
     static from<TValue>(values: Iterable<TValue>): Stream<TValue> {
         const iter = values[Symbol.iterator]();
 
@@ -191,9 +201,13 @@ async function run() {
     //     console.log(array);
     // });
 
-    for await (let value of s) {
+    s.forEach((value) => {
         console.log(value);
-    }
+    });
+
+    // for await (let value of s) {
+    //     console.log(value);
+    // }
 
     console.log("async done");
 }
