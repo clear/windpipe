@@ -54,7 +54,7 @@ class Stream<TValue> {
                     feed_consumer();
                 }
             }
-            
+
             const feed_consumer = () => {
                 // Make sure that queue has some values in it
                 if (queue.length === 0) {
@@ -178,12 +178,32 @@ class Stream<TValue> {
             }
         });
     }
+
+    static empty<TValue>(): Stream<TValue> {
+        return new Stream((cb) => {
+            cb(STREAM_END);
+        });
+    }
+
+    static cycle<TValue>(values: ArrayLike<TValue>): Stream<TValue> {
+        if (values.length === 0) {
+            return Stream.empty();
+        } else {
+            let i = 0;
+
+            return new Stream((cb) => {
+                cb(values[i] as TValue);
+
+                i = (i + 1) % values.length;
+            });
+        }
+    }
 };
 
 async function run() {
     console.log("running");
 
-    let s = Stream.from([
+    let s = Stream.cycle([
         1,
         2,
         3,
