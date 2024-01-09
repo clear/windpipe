@@ -21,6 +21,9 @@ class Stream<TValue> {
         this.get_next_value = next_value;
     }
 
+    /**
+     * Get next value in stream, ensuring that the callback is only called once.
+     */
     next(cb: (value: StreamAtom<TValue>) => void) {
         let emitted = false;
 
@@ -34,7 +37,6 @@ class Stream<TValue> {
         });
     }
 
-    // De-dupe value callbacks
     consume<TValue_>(consumer: Consumer<TValue, TValue_>): Stream<TValue_> {
         let queue: Array<StreamAtom<TValue_>> = [];
 
@@ -45,7 +47,7 @@ class Stream<TValue> {
                 if (queue.length > 0) {
                     // Value remains in queue, fetch it before continuing
                     value_provided = true;
-                    return provide_value(queue.shift() as any);
+                    return provide_value(queue.shift() as StreamAtom<TValue_>);
                 } else {
                     feed_consumer();
                 }
@@ -81,6 +83,17 @@ class Stream<TValue> {
                 done(STREAM_END);
             } else {
                 done(op(value));
+            }
+        });
+    }
+
+    tap(op: (value: TValue) => void): Stream<TValue> {
+        return this.consume((value, done) => {
+            if (value === STREAM_END) {
+                done(STREAM_END);
+            } else {
+                op(value);
+                done(value);
             }
         });
     }
@@ -144,18 +157,19 @@ async function run() {
     let s = Stream.from([
         1,
         2,
-        3
+        3,
+        4,
     ])
-    .consume((value, done) => {
+    .consume<number>((value, done) => {
         if (value === STREAM_END) {
             done(STREAM_END);
         } else {
             done(value, value * 10);
         }
     })
+    .tap((value) => console.log("the value is", value))
     .delay(250)
-    // TODO: Fix inference
-    .map((value) => (value as number).toString(10));
+    .map((value) => value.toString(10));
 
     // s.toArray((array) => {
     //     console.log("finished");
