@@ -1,11 +1,15 @@
 import { createReadStream } from "fs";
 import { Readable } from "stream";
 
-const STREAM_END = Symbol.for("STREAM_END");
-const NO_RESULT = Symbol.for("NO_RESULT");
+type Callback<T> = (value: T) => void;
+type OptionalCallback<T> = (value?: T) => void;
+type CallbackProvider<TValue, TErr> = Callback<Callback<StreamAtom<TValue, TErr>>>;
 
-type StreamAtom<TValue> = TValue | typeof STREAM_END;
-type NextValueCallback<TValue> = (cb: (value: StreamAtom<TValue>) => void) => void;
+type StreamAtom<TValue, TErr> = 
+    { type: "value", value: TValue } |
+    { type: "error", value: TErr } |
+    { type: "unknown", value: unknown, trace: Array<string> } |
+    { type: "end" };
 
 /**
  * Consume a stream, value by value, pushing values onto a new stream.
@@ -16,40 +20,33 @@ type NextValueCallback<TValue> = (cb: (value: StreamAtom<TValue>) => void) => vo
  * @param value - Value being emitted in the stream.
  * @param done - Callback to be passed values to be pushed onto new stream
  */
-type Consumer<TValue, TValue_> = (value: StreamAtom<TValue>, done: (...values: Array<StreamAtom<TValue_>>) => void) => void;
+type Consumer<TValue, TErr, TValue_, TErr_> = (value: StreamAtom<TValue, TErr>, done: OptionalCallback<Array<StreamAtom<TValue_, TErr_>>>) => void;
 
 const nop = () => {};
 
-class Stream<TValue> {
-    get_next_value: NextValueCallback<TValue>;
+class Stream<TValue, TErr> {
+    get_next_value: CallbackProvider<TValue, TErr>;
 
-    last_trace: Stream<any> | null = null;
+    last_trace: Stream<any, any> | null = null;
     trace: Array<string> = [];
-    unknown_errors: Array<{ trace: Array<string>, error: unknown }> = [];
 
-    constructor(next_value: NextValueCallback<TValue>) {
+    constructor(next_value: CallbackProvider<TValue, TErr>) {
         this.get_next_value = next_value;
     }
 
-    private proxy_user_function<TFunc extends () => any>(f: TFunc): ReturnType<TFunc> | typeof NO_RESULT {
+    private proxy_user_function<TFunc extends () => any>(f: TFunc): StreamAtom<TFunc extends (() => infer TValue) ? TValue : never, TErr> {
         try {
-            return f();
+            return { type: "value", value: f() };
         } catch (error) {
-            this.unknown_errors.push({
-                trace: [...this.trace],
-                error
-            });
+            return { type: "unknown", value: error, trace: [...this.trace] };
         };
-
-        return NO_RESULT;
     }
 
-    private clone_stream<TValue_>(next_value: NextValueCallback<TValue_>): Stream<TValue_> {
+    private clone_stream<TValue_, TErr_>(next_value: CallbackProvider<TValue_, TErr_>): Stream<TValue_, TErr_> {
         const s = new Stream(next_value);
 
         s.last_trace = this.last_trace;
         s.trace = this.trace;
-        s.unknown_errors = this.unknown_errors;
 
         return s;
     }
@@ -64,7 +61,7 @@ class Stream<TValue> {
     /**
      * Get next value in stream, ensuring that the callback is only called once.
      */
-    next(cb: (value: StreamAtom<TValue>) => void) {
+    next(cb: (value: StreamAtom<TValue, TErr>) => void) {
         let emitted = false;
 
         this.get_next_value((value) => {
@@ -77,10 +74,10 @@ class Stream<TValue> {
         });
     }
 
-    consume<TValue_>(consumer: Consumer<TValue, TValue_>): Stream<TValue_> {
+    consume<TValue_, TErr_>(consumer: Consumer<TValue, TErr, TValue_, TErr_>): Stream<TValue_, TErr_> {
         this.t("consume");
 
-        let queue: Array<StreamAtom<TValue_>> = [];
+        let queue: Array<StreamAtom<TValue_, TErr_>> = [];
 
         return this.clone_stream((provide_value) => {
             let value_provided = false;
@@ -89,7 +86,7 @@ class Stream<TValue> {
                 if (queue.length > 0) {
                     // Value remains in queue, fetch it before continuing
                     value_provided = true;
-                    return provide_value(queue.shift() as StreamAtom<TValue_>);
+                    return provide_value(queue.shift() as StreamAtom<TValue_, TErr_>);
                 } else {
                     feed_consumer();
                 }
@@ -102,9 +99,11 @@ class Stream<TValue> {
                     this.next((value) => {
                         // Pass it to the consumer
                         this.proxy_user_function(() => (
-                            consumer(value, (...values) => {
+                            consumer(value, (values) => {
                                 // Update the queue
-                                queue = queue.concat(values);
+                                if (values) {
+                                    queue = queue.concat(values);
+                                }
 
                                 // Emit value
                                 emit_value();
@@ -121,85 +120,66 @@ class Stream<TValue> {
         });
     }
 
-    /**
-     * Like `consume`, however ensures that the stream end marker won't be encountered by the
-     * handler, and prevents the stream end marker from being emitted by a handler. Useful for
-     * avoiding boilerplate:
-     *
-     * ```
-     * stream.consume((value, done) => {
-     *     if (value === STREAM_END) {
-     *         done(STREAM_END);
-     *     } else {
-     *         // Some operations with value
-     *         done(result_a, result_b);
-     *     }
-     * });
-     * ```
-     * `
-     */
-    consume_bounded<TValue_>(consumer: (value: TValue, done: (...values: Array<TValue_>) => void) => void): Stream<TValue_> {
-        this.t("consume_bounded");
+    consume_values<TValue_>(consumer: (value: TValue, done: Callback<Array<StreamAtom<TValue_, TErr>>>) => void): Stream<TValue_, TErr> {
+        this.t("consume_values");
 
         return this.consume((value, done) => {
-            if (value === STREAM_END) {
-                done(STREAM_END);
-            } else {
+            if (value.type === "value") {
                 this.proxy_user_function(() => {
-                    consumer(value, done);
+                    consumer(value.value, (...values) => {
+                        done(values.map((value) => ({ type: "value", value }) as StreamAtom<TValue_, TErr>));
+                    });
                 });
+            } else {
+                done([value]);
             }
-        })
+        });
     }
 
-    push(value: TValue): Stream<TValue> {
+    push(value: TValue): Stream<TValue, TErr> {
         this.t("push");
 
         let pushed = false;
         return this.consume((next_value, done) => {
-            if (next_value === STREAM_END && !pushed) {
+            if (next_value.type === "error" && !pushed) {
                 pushed = true;
-                done(value, STREAM_END);
+                done([{ type: "value", value }, next_value]);
             } else {
-                done(next_value);
+                done([next_value]);
             }
         });
     }
 
-    map<TValue_>(op: (value: TValue) => TValue_): Stream<TValue_> {
+    map<TValue_>(op: (value: TValue) => TValue_): Stream<TValue_, TErr> {
         this.t("map");
 
-        return this.consume_bounded((value, done) => {
-            let result = this.proxy_user_function(() => (
+        return this.consume_values((value, done) => {
+            const result = this.proxy_user_function(() => (
                 op(value)
             ));
 
-            if (result !== NO_RESULT) {
-                done(result);
-            } else {
-                done();
-            }
+            done([result]);
         });
     }
 
-    tap(op: (value: TValue) => void): Stream<TValue> {
+    tap(op: (value: TValue) => void): Stream<TValue, TErr> {
         this.t("tap");
 
-        return this.consume_bounded((value, done) => {
+        return this.consume_values((value, done) => {
             this.proxy_user_function(() => {
                 op(value);
             });
 
-            done(value);
+            done([{ type: "value", value }]);
         });
     }
 
-    delay(ms: number): Stream<TValue> {
+    delay(ms: number): Stream<TValue, TErr> {
         this.t("delay");
 
         return this.consume((value, done) => {
             setTimeout(() => {
-                done(value);
+                done([value]);
             }, ms);
         });
     }
@@ -208,11 +188,13 @@ class Stream<TValue> {
         return {
             next: () => new Promise<IteratorResult<TValue, unknown>>((resolve) => {
                 this.next((value) => {
-                    if (value === STREAM_END) {
+                    if (value.type === "end") {
                         resolve({ done: true, value: undefined });
-                    } else {
-                        resolve({ done: false, value });
+                    } else if (value.type === "value") {
+                        resolve({ done: false, value: value.value });
                     }
+
+                    // TODO: Work out what to do with error variant
                 });
             })
         };
@@ -221,23 +203,29 @@ class Stream<TValue> {
     toArray(cb: (array: Array<TValue>) => void) {
         const array: Array<TValue> = [];
 
-        this.consume<typeof array>((value, done) => {
-            if (value === STREAM_END) {
-                done(array, STREAM_END);
-            } else {
-                array.push(value);
+        this.consume<typeof array, never>((value, done) => {
+            if (value.type === "end") {
+                done([{ type: "value", value: array }, { type: "end" }]);
+            } else if (value.type === "value") {
+                array.push(value.value);
 
                 // Continually retry to pull everything out of the stream
                 done();
             }
         })
-            .next((value: any) => cb(value));
+            .next((value) => {
+                if (value.type === "value") {
+                    cb(value.value);
+                } else {
+                    // TODO: Work out what to do here
+                }
+            });
     }
 
     forEach(cb: (value: TValue) => void) {
-        this.consume_bounded((value, done) => {
+        this.consume_values((value, done) => {
             cb(value);
-            done();
+            done([]);
         })
             .exhaust();
     }
@@ -249,25 +237,27 @@ class Stream<TValue> {
             .next(nop);
     }
 
-    static of<TValue>(value: ((cb: (value: TValue) => void) => void) | TValue): Stream<TValue> {
+    static of<TValue, TErr>(value: ((cb: (value: TValue) => void) => void) | TValue): Stream<TValue, TErr> {
         let emitted = false;
 
         return new Stream((cb) => {
             if (!emitted) {
                 if (value instanceof Function) {
-                    value(cb);
+                    value((value) => {
+                        cb({ type: "value", value });
+                    });
                 } else {
-                    cb(value);
+                    cb({ type: "value", value });
                 }
 
                 emitted = true;
             } else {
-                cb(STREAM_END);
+                cb({ type: "end" });
             }
         });
     }
 
-    static from<TValue>(values: Iterable<TValue> | Promise<TValue> | Readable): Stream<TValue> {
+    static from<TValue, TErr>(values: Iterable<TValue> | Promise<TValue> | Readable): Stream<TValue, TErr> {
         if (Symbol.iterator in values) {
             const iter = values[Symbol.iterator]();
 
@@ -275,9 +265,9 @@ class Stream<TValue> {
                 let result: IteratorResult<TValue, unknown> = iter.next();
 
                 if (result.done) {
-                    cb(STREAM_END);
+                    cb({ type: "end" });
                 } else {
-                    cb(result.value);
+                    cb({ type: "value", value: result.value });
                 }
             });
         } else if (values instanceof Promise) {
@@ -302,12 +292,14 @@ class Stream<TValue> {
             return new Stream((cb) => {
                 if (buffer.length > 0) {
                     // Send the latest value from the buffer
-                    cb(buffer.shift() as TValue);
+                    cb({ type: "value", value: buffer.shift() as TValue });
                 } else if (stream_closed) {
-                    cb(STREAM_END);
+                    cb({ type: "end" });
                 } else {
                     // Queue the callback to recieve data
-                    queue.push(cb);
+                    queue.push((value) => {
+                        cb({ type: "value", value });
+                    });
                 }
             });
         }
@@ -316,20 +308,20 @@ class Stream<TValue> {
 
     }
 
-    static empty<TValue>(): Stream<TValue> {
+    static empty<TValue, TErr>(): Stream<TValue, TErr> {
         return new Stream((cb) => {
-            cb(STREAM_END);
+            cb({ type: "end" });
         });
     }
 
-    static cycle<TValue>(values: ArrayLike<TValue>): Stream<TValue> {
+    static cycle<TValue, TErr>(values: ArrayLike<TValue>): Stream<TValue, TErr> {
         if (values.length === 0) {
             return Stream.empty();
         } else {
             let i = 0;
 
             return new Stream((cb) => {
-                cb(values[i] as TValue);
+                cb({ type: "value", value: values[i] as TValue });
 
                 i = (i + 1) % values.length;
             });
@@ -346,8 +338,8 @@ async function run() {
         3,
         4,
     ])
-    .consume_bounded<number>((value, done) => {
-        done(value, value * 10);
+    .consume_values<number>((value, done) => {
+        done([{ type: "value", value }, { type: "value", value: value * 10 }]);
     })
     // .tap((value) => console.log("the value is", value))
     .delay(100)
@@ -363,8 +355,6 @@ async function run() {
     s.toArray((array) => {
         console.log("finished");
         console.log(array);
-
-        console.log(s.unknown_errors);
     });
 
     // s.forEach((value) => {
