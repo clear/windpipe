@@ -48,6 +48,31 @@ type Consumer<TValue, TErr, TValue_, TErr_> = (value: StreamAtom<TValue, TErr>, 
 
 const nop = () => {};
 
+type Condition<TValue> = (value: TValue) => boolean;
+type ConditionHandler<TValue, TErr> = (value: TValue) => Stream<TValue, TErr>;
+class IfBuilder<TValue, TErr> {
+    stream: Stream<TValue, TErr>;
+    conditions: Array<{ condition: Condition<TValue>, handler: ConditionHandler<TValue, TErr> }> = [];
+
+    constructor(stream: Stream<TValue, TErr>) {
+        this.stream = stream;
+    }
+
+    else_if(condition: Condition<TValue>, handler: ConditionHandler<TValue, TErr>): IfBuilder<TValue, TErr> {
+        this.conditions.push({ condition, handler });
+
+        return this;
+    }
+
+    else(else_handler: ConditionHandler<TValue, TErr>): Stream<TValue, TErr> {
+        return this.stream.flat_map((value) => {
+            const handler = this.conditions.find(({ condition }) => condition(value))?.handler || else_handler;
+
+            return handler(value);
+        });
+    }
+}
+
 class Stream<TValue, TErr> {
     get_next_value: CallbackProvider<TValue, TErr>;
 
@@ -186,6 +211,51 @@ class Stream<TValue, TErr> {
         });
     }
 
+    flat_map<TValue_>(op: (value: TValue) => Stream<TValue_, TErr>): Stream<TValue_, TErr> {
+        this.t("flat_map");
+
+        let current_stream: Stream<TValue_, TErr> | null = null;
+
+        return this.clone_stream((provide_value) => {
+            const pull_from_stream = () => {
+                if (current_stream === null) {
+                    provide_value(end());
+                } else {
+                    // Forward the next value in the current stream onwards
+                    current_stream.next((value) => {
+                        if (value.type === END) {
+                            // Remove the stream and try again
+                            current_stream = null;
+
+                            load_stream();
+                        } else {
+                            provide_value(value);
+                        }
+                    });
+                }
+            };
+
+            const load_stream = () => {
+                if (current_stream === null) {
+                    // No current stream, create one
+                    this.next((value) => {
+                        if (value.type === VALUE) {
+                            // Create a new stream with the next value
+                            current_stream = op(value.value);
+                        }
+
+                        pull_from_stream();
+                    });
+                } else {
+                    // Current stream, use it
+                    pull_from_stream();
+                }
+            };
+
+            load_stream();
+        });
+    }
+
     tap(op: (value: TValue) => void): Stream<TValue, TErr> {
         this.t("tap");
 
@@ -206,6 +276,13 @@ class Stream<TValue, TErr> {
                 done([value]);
             }, ms);
         });
+    }
+
+    if(condition: Condition<TValue>, handler: ConditionHandler<TValue, TErr>): IfBuilder<TValue, TErr> {
+        this.t("if");
+
+        return new IfBuilder(this)
+            .else_if(condition, handler);
     }
 
     [Symbol.asyncIterator]() {
@@ -258,8 +335,12 @@ class Stream<TValue, TErr> {
     }
 
     exhaust() {
-        this.consume((_value, done) => {
-            done();
+        this.consume((value, done) => {
+            if (value.type === END) {
+                done([end()]);
+            } else {
+                done();
+            }
         })
             .next(nop);
     }
@@ -269,6 +350,8 @@ class Stream<TValue, TErr> {
 
         return new Stream((cb) => {
             if (!emitted) {
+                emitted = true;
+
                 if (value instanceof Function) {
                     value((value) => {
                         cb(ok(value));
@@ -276,8 +359,6 @@ class Stream<TValue, TErr> {
                 } else {
                     cb(ok(value));
                 }
-
-                emitted = true;
             } else {
                 cb(end());
             }
@@ -359,6 +440,11 @@ class Stream<TValue, TErr> {
 async function run() {
     console.log("running");
 
+    // Stream.of(1)
+    //     .forEach((value) => {
+    //         console.log(value);
+    //     });
+
     let s = Stream.from([
         1,
         2,
@@ -404,6 +490,24 @@ async function run() {
     const readable_stream = createReadStream('./src/index.ts');
     Stream.from(readable_stream)
         .forEach(console.log);
+
+    Stream.from([1, 2, 3, 4, 5])
+        .if((value) => value % 2 === 0, (value) => (
+            Stream.of(value)
+                .tap((value) => console.log("even value", value))
+                .push(-value)
+        ))
+        .else_if((value) => value % 3 === 0, (_value) => (
+            Stream.of(10)
+        ))
+        .else((value) => {
+            console.log("else with", value);
+            return Stream.of(value);
+        })
+        .toArray((arr) => {
+            console.log("if else done");
+            console.log(arr);
+        });
 }
 
 run();
