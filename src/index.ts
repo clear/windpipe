@@ -1,3 +1,6 @@
+import { createReadStream } from "fs";
+import { Readable } from "stream";
+
 const STREAM_END = Symbol.for("STREAM_END");
 const NO_RESULT = Symbol.for("NO_RESULT");
 
@@ -264,7 +267,7 @@ class Stream<TValue> {
         });
     }
 
-    static from<TValue>(values: Iterable<TValue> | Promise<TValue>): Stream<TValue> {
+    static from<TValue>(values: Iterable<TValue> | Promise<TValue> | Readable): Stream<TValue> {
         if (Symbol.iterator in values) {
             const iter = values[Symbol.iterator]();
 
@@ -279,6 +282,34 @@ class Stream<TValue> {
             });
         } else if (values instanceof Promise) {
             return Stream.of((cb) => values.then(cb));
+        } else if (values instanceof Readable) {
+            const buffer: Array<TValue> = [];
+            const queue: Array<(value: TValue) => void> = [];
+            let stream_closed = false;
+
+            values.on("data", (chunk) => {
+                if (queue.length > 0) {
+                    const cb = queue.shift() as (value: TValue) => void;
+                    cb(chunk);
+                } else {
+                    buffer.push(chunk);
+                }
+            });
+            values.on("close", () => {
+                stream_closed = true;
+            });
+
+            return new Stream((cb) => {
+                if (buffer.length > 0) {
+                    // Send the latest value from the buffer
+                    cb(buffer.shift() as TValue);
+                } else if (stream_closed) {
+                    cb(STREAM_END);
+                } else {
+                    // Queue the callback to recieve data
+                    queue.push(cb);
+                }
+            });
         }
 
         return Stream.empty();
@@ -349,6 +380,10 @@ async function run() {
             resolve({ success: true });
         }, 2000);
     })).forEach((val) => console.log(val));
+
+    const readable_stream = createReadStream('./src/index.ts');
+    Stream.from(readable_stream)
+        .forEach(console.log);
 }
 
 run();
