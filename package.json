@@ -1,6 +1,6 @@
 {
   "name": "windpipe",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "type": "module",
@@ -14,7 +14,15 @@
     "dev": "run-p dev:*"
   },
   "keywords": [],
-  "author": "",
+  "author": {
+    "name": "Tom Anderson",
+    "email": "tom@ando.gq",
+    "url": "https://ando.gq"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/andogq/windpipe.git"
+  },
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.10.7",
