@@ -1,12 +1,27 @@
 import { type Atom, ok, err, unknown, end, is_ok, is_end } from "./atom";
+import { IfBuilder, type Condition, type ConditionHandler } from "./if_builder";
 import { normalise, type Value } from "./value";
 
 import { createReadStream } from "fs";
 import { Readable } from "stream";
 
+/**
+ * Callback function consuming value of type `T`.
+ */
 type Callback<T> = (value: T) => void;
+
+/**
+ * Callback function consuming optional value of type `T`.
+ */
 type OptionalCallback<T> = (value?: T) => void;
-type CallbackProvider<T, E> = Callback<Callback<Atom<T, E>>>;
+
+/**
+ * Every call of this function should produce a new atom for the stream. It takes a callback
+ * function as it's only parameter, which must be called with the stream atom upon completion. The
+ * provided callback must only be called once, however the atom producer can be called multiple
+ * times in order to produce more values.
+ */
+type AtomProducer<T, E> = Callback<Callback<Atom<T, E>>>;
 
 /**
  * Consume a stream, value by value, pushing values onto a new stream.
@@ -21,41 +36,33 @@ type Consumer<T, E, U, F> = (value: Atom<T, E>, done: OptionalCallback<Array<Val
 
 const nop = () => {};
 
-type Condition<T> = (value: T) => boolean;
-type ConditionHandler<T, E> = (value: T) => Stream<T, E>;
-class IfBuilder<T, E> {
-    stream: Stream<T, E>;
-    conditions: Array<{ condition: Condition<T>, handler: ConditionHandler<T, E> }> = [];
+export class Stream<T, E> {
+    /**
+     * Callback function that will produce the next stream atom.
+     */
+    atom_producer: AtomProducer<T, E>;
 
-    constructor(stream: Stream<T, E>) {
-        this.stream = stream;
-    }
-
-    else_if(condition: Condition<T>, handler: ConditionHandler<T, E>): IfBuilder<T, E> {
-        this.conditions.push({ condition, handler });
-
-        return this;
-    }
-
-    else(else_handler: ConditionHandler<T, E>): Stream<T, E> {
-        return this.stream.flat_map((value) => {
-            const handler = this.conditions.find(({ condition }) => condition(value))?.handler || else_handler;
-
-            return handler(value);
-        });
-    }
-}
-
-class Stream<T, E> {
-    get_next_value: CallbackProvider<T, E>;
-
+    /**
+     * A reference to the stream where the last trace was taken. This is useful for ensuring that
+     * traces aren't captured multiple times for a single operation, for instance when a method
+     * calls another method function.
+     */
     last_trace: Stream<any, any> | null = null;
+
+    /**
+     * Current trace for this stream, used for nice error messages.
+     */
     trace: Array<string> = [];
 
-    constructor(next_value: CallbackProvider<T, E>) {
-        this.get_next_value = next_value;
+    constructor(atom_producer: AtomProducer<T, E>) {
+        this.atom_producer = atom_producer;
     }
 
+    /**
+     * Wrap another function with this one to catch any errors that are thrown, and emit them as
+     * an `unknown` stream atom. This is particularly useful for running user functions which may
+     * not properly handle errors.
+     */
     private proxy_user_function<U>(f: () => Value<U, E>): Atom<U, E> {
         try {
             return normalise(f());
@@ -64,8 +71,11 @@ class Stream<T, E> {
         };
     }
 
-    private clone_stream<U, F>(next_value: CallbackProvider<U, F>): Stream<U, F> {
-        const s = new Stream(next_value);
+    /**
+     * Create a new stream with a new atom producer, but retaining current tracing state.
+     */
+    private clone_stream<U, F>(atom_producer: AtomProducer<U, F>): Stream<U, F> {
+        const s = new Stream(atom_producer);
 
         s.last_trace = this.last_trace;
         s.trace = this.trace;
@@ -73,6 +83,10 @@ class Stream<T, E> {
         return s;
     }
 
+    /**
+     * Insert a trace. The trace will only be updated if it has not been called on this instance
+     * of the stream.
+     */
     private t(trace: string) {
         if (this.last_trace !== this) {
             this.last_trace = this;
@@ -81,12 +95,12 @@ class Stream<T, E> {
     }
 
     /**
-     * Get next value in stream, ensuring that the callback is only called once.
+     * Get the next atom in the stream, passing it to the provided callback upon resolution.
      */
-    next(cb: (value: Atom<T, E>) => void) {
+    next(cb: Callback<Atom<T, E>>) {
         let emitted = false;
 
-        this.get_next_value((value) => {
+        this.atom_producer((value) => {
             if (emitted) {
                 console.error("value emitted twice");
             } else {
