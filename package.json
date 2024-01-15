@@ -1,20 +1,30 @@
 {
   "name": "windpipe",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Highland but better",
-  "main": "index.js",
   "type": "module",
   "scripts": {
     "lint": "tsc",
-    "build": "esbuild src/index.ts --bundle --platform=node --outfile=dist/index.js --format=esm",
+    "build": "tsup ./src --format esm,cjs,iife --dts",
     "start": "node dist/index.js",
     "dev:tsc": "tsc --watch --preserveWatchOutput",
     "dev:node": "node --watch dist/index.js",
     "dev:esbuild": "npm run build -- --watch",
     "dev": "run-p dev:*",
-    "doc": "typedoc ./src/"
+    "doc": "typedoc ./src"
   },
   "keywords": [],
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
   "author": {
     "name": "Tom Anderson",
     "email": "tom@ando.gq",
@@ -27,9 +37,10 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^20.10.7",
-    "esbuild": "^0.19.11",
     "npm-run-all": "^4.1.5",
+    "tsup": "^8.0.1",
     "typedoc": "^0.25.7",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
   }
 }
