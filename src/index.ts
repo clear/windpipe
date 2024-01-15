@@ -36,23 +36,34 @@ type Consumer<T, E, U, F> = (value: Atom<T, E>, done: OptionalCallback<Array<Val
 
 const nop = () => {};
 
+/**
+ * Stream interface.
+ *
+ * @public
+ */
 export class Stream<T, E> {
     /**
      * Callback function that will produce the next stream atom.
+     *
+     * @internal
      */
-    atom_producer: AtomProducer<T, E>;
+    private atom_producer: AtomProducer<T, E>;
 
     /**
      * A reference to the stream where the last trace was taken. This is useful for ensuring that
      * traces aren't captured multiple times for a single operation, for instance when a method
      * calls another method function.
+     *
+     * @internal
      */
-    last_trace: Stream<any, any> | null = null;
+    private last_trace: Stream<any, any> | null = null;
 
     /**
      * Current trace for this stream, used for nice error messages.
+     *
+     * @internal
      */
-    trace: Array<string> = [];
+    private trace: Array<string> = [];
 
     constructor(atom_producer: AtomProducer<T, E>) {
         this.atom_producer = atom_producer;
@@ -62,6 +73,8 @@ export class Stream<T, E> {
      * Wrap another function with this one to catch any errors that are thrown, and emit them as
      * an `unknown` stream atom. This is particularly useful for running user functions which may
      * not properly handle errors.
+     *
+     * @internal
      */
     private proxy_user_function<U>(f: () => Value<U, E>): Atom<U, E> {
         try {
@@ -73,6 +86,8 @@ export class Stream<T, E> {
 
     /**
      * Create a new stream with a new atom producer, but retaining current tracing state.
+     *
+     * @internal
      */
     private clone_stream<U, F>(atom_producer: AtomProducer<U, F>): Stream<U, F> {
         const s = new Stream(atom_producer);
@@ -86,6 +101,8 @@ export class Stream<T, E> {
     /**
      * Insert a trace. The trace will only be updated if it has not been called on this instance
      * of the stream.
+     *
+     * @internal
      */
     private t(trace: string) {
         if (this.last_trace !== this) {
@@ -96,6 +113,8 @@ export class Stream<T, E> {
 
     /**
      * Get the next atom in the stream, passing it to the provided callback upon resolution.
+     * 
+     * @internal
      */
     next(cb: Callback<Atom<T, E>>) {
         let emitted = false;
@@ -110,6 +129,9 @@ export class Stream<T, E> {
         });
     }
 
+    /**
+     * @internal
+     */
     consume<U, F>(consumer: Consumer<T, E, U, F>): Stream<U, F> {
         this.t("consume");
 
@@ -156,6 +178,9 @@ export class Stream<T, E> {
         });
     }
 
+    /**
+     * @internal
+     */
     consume_values<U>(consumer: (value: T, done: Callback<Array<Value<U, E>>>) => void): Stream<U, E> {
         this.t("consume_values");
 
@@ -172,6 +197,9 @@ export class Stream<T, E> {
         });
     }
 
+    /**
+     * @internal
+     */
     push(value: T): Stream<T, E> {
         this.t("push");
 
@@ -186,6 +214,14 @@ export class Stream<T, E> {
         });
     }
 
+    /**********
+     * Transforms
+     **********/
+    /**
+     * Map over each value in the stream, producing a new value.
+     *
+     * @group Transforms
+     */
     map<U>(op: (value: T) => Value<U, E>): Stream<U, E> {
         this.t("map");
 
@@ -198,6 +234,83 @@ export class Stream<T, E> {
         });
     }
 
+    /**
+     * For each value in the stream call the provided function, returning a stream of the original
+     * values. This is useful for observing values in the stream without modifying them.
+     *
+     * @group Transforms
+     */
+    tap(op: (value: T) => void): Stream<T, E> {
+        this.t("tap");
+
+        return this.consume_values((value, done) => {
+            this.proxy_user_function(() => {
+                op(value);
+            });
+
+            done([ok(value)]);
+        });
+    }
+
+    /**
+     * Any time a value is emitted from upstream, delay it by some amount of milliseconds.
+     *
+     * @group Transforms
+     */
+    delay(ms: number): Stream<T, E> {
+        this.t("delay");
+
+        return this.consume((value, done) => {
+            setTimeout(() => {
+                done([value]);
+            }, ms);
+        });
+    }
+
+    /**********
+     * Control flow
+     **********/
+    /**
+     * Creates a new `IfBuilder` that will operate over the stream. Allows for defining conditions
+     * and a callback to run if the condition passes, which should produce a new stream. This is a
+     * helper which is an alternative to calling `flat_map` with if/else if/else blocks inside.
+     *
+     * @group Control Flow
+     */
+    if(condition: Condition<T>, handler: ConditionHandler<T, E>): IfBuilder<T, E> {
+        this.t("if");
+
+        return new IfBuilder(this)
+            .else_if(condition, handler);
+    }
+
+    /**
+     * Operate a case matcher across each item in the stream. Each branch of the case should
+     * produce a new stream, which will be flattened into the resulting stream.
+     *
+     * @group Control Flow
+     */
+    case<U, TCase extends string | number | symbol, TCases extends Record<TCase, (value: T) => Stream<U, E>>>(
+        case_generator: (value: T) => TCase,
+        cases: TCases,
+        fallback: (value: T) => Stream<U, E> = (_value) => Stream.empty(),
+    ): Stream<U, E> {
+        return this.flat_map((value) => {
+            let handler = cases[case_generator(value)] || fallback;
+
+            return handler(value);
+        });
+    }
+
+    /**********
+     * Higher order streams
+     **********/
+    /**
+     * Map over each value of the stream, producing a new stream for each. Each produced stream
+     * will be flattened into a single resulting stream.
+     *
+     * @group Higher Order Streams
+     */
     flat_map<U>(op: (value: T) => Stream<U, E>): Stream<U, E> {
         this.t("flat_map");
 
@@ -243,47 +356,20 @@ export class Stream<T, E> {
         });
     }
 
-    tap(op: (value: T) => void): Stream<T, E> {
-        this.t("tap");
-
-        return this.consume_values((value, done) => {
-            this.proxy_user_function(() => {
-                op(value);
-            });
-
-            done([ok(value)]);
-        });
-    }
-
-    delay(ms: number): Stream<T, E> {
-        this.t("delay");
-
-        return this.consume((value, done) => {
-            setTimeout(() => {
-                done([value]);
-            }, ms);
-        });
-    }
-
-    if(condition: Condition<T>, handler: ConditionHandler<T, E>): IfBuilder<T, E> {
-        this.t("if");
-
-        return new IfBuilder(this)
-            .else_if(condition, handler);
-    }
-
-    case<U, TCase extends string | number | symbol, TCases extends Record<TCase, (value: T) => Stream<U, E>>>(
-        case_generator: (value: T) => TCase,
-        cases: TCases,
-        fallback: (value: T) => Stream<U, E> = (_value) => Stream.empty(),
-    ): Stream<U, E> {
-        return this.flat_map((value) => {
-            let handler = cases[case_generator(value)] || fallback;
-
-            return handler(value);
-        });
-    }
-
+    /**********
+     * Stream consumption
+     **********/
+    /**
+     * Consume the stream as an async iterator. For example:
+     *
+     * ```
+     * for await (let item of stream) {
+     *     // ...
+     * }
+     * ```
+     *
+     * @group Stream Consumption
+     */
     [Symbol.asyncIterator]() {
         return {
             next: () => new Promise<IteratorResult<T, unknown>>((resolve) => {
@@ -300,6 +386,12 @@ export class Stream<T, E> {
         };
     }
 
+    /**
+     * Consume the stream, producing an array of values. Currently undefined behaviour if an error
+     * is emitted in the stream.
+     *
+     * @group Stream Consumption
+     */
     toArray(cb: (array: Array<T>) => void) {
         const array: Array<T> = [];
 
@@ -326,6 +418,12 @@ export class Stream<T, E> {
             });
     }
 
+    /**
+     * Consume the stream by calling a function for each value in the stream. Currently, error
+     * values will be skipped.
+     *
+     * @group Stream Consumption
+     */
     forEach(cb: (value: T) => void) {
         this.consume_values((value, done) => {
             cb(value);
@@ -334,6 +432,13 @@ export class Stream<T, E> {
             .exhaust();
     }
 
+    /**
+     * Consume the stream by continually pulling values from the stream, without doing anything to
+     * them. This is pretty useless by itself, but convinient if a previous stream step is
+     * aggregating stream values in some way.
+     *
+     * @group Stream Consumption
+     */
     exhaust() {
         this.consume((value, done) => {
             if (is_end(value)) {
@@ -345,6 +450,14 @@ export class Stream<T, E> {
             .next(nop);
     }
 
+    /**********
+     * Stream creation
+     **********/
+    /**
+     * Create a stream with a single value in it.
+     *
+     * @group Stream Creation
+     */
     static of<T, E>(value: ((cb: (value: T) => void) => void) | T): Stream<T, E> {
         let emitted = false;
 
@@ -365,6 +478,12 @@ export class Stream<T, E> {
         });
     }
 
+    /**
+     * Create a stream from some kind of value. This can be an iterable, a promise which resolves
+     * to some value, or a readable stream.
+     *
+     * @group Stream Creation
+     */
     static from<T, E>(values: Iterable<T> | Promise<T> | Readable): Stream<T, E> {
         if (Symbol.iterator in values) {
             const iter = values[Symbol.iterator]();
@@ -416,12 +535,24 @@ export class Stream<T, E> {
 
     }
 
+    /**
+     * Create an empty stream.
+     *
+     * @group Stream Creation
+     */
     static empty<T, E>(): Stream<T, E> {
         return new Stream((cb) => {
             cb(end());
         });
     }
 
+    /**
+     * Create a stream from the provided array, which will continually iterate over every item.
+     * This may lead to a stream that never terminates, unless termination is introduced
+     * downstream.
+     *
+     * @group Stream Creation
+     */
     static cycle<T, E>(values: ArrayLike<T>): Stream<T, E> {
         if (values.length === 0) {
             return Stream.empty();
