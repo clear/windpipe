@@ -11,7 +11,8 @@
     "dev:node": "node --watch dist/index.js",
     "dev:esbuild": "npm run build -- --watch",
     "dev": "run-p dev:*",
-    "doc": "typedoc ./src"
+    "doc": "typedoc ./src",
+    "test": "vitest"
   },
   "keywords": [],
   "files": [

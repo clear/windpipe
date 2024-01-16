@@ -392,30 +392,40 @@ export class Stream<T, E> {
      *
      * @group Stream Consumption
      */
-    toArray(cb: (array: Array<T>) => void) {
-        const array: Array<T> = [];
-
-        this.consume<typeof array, never>((value, done) => {
-            if (is_end(value)) {
-                done([ok(array), end()]);
-            } else if (is_ok(value)) {
-                array.push(value.value);
-
-                // Continually retry to pull everything out of the stream
-                done();
-            } else {
-                console.log(value);
-                // Error of some type, work out what to do
-                done();
-            }
-        })
-            .next((value) => {
-                if (is_ok(value)) {
-                    cb(value.value);
-                } else {
-                    // TODO: Work out what to do here
+    toArray(cb?: (array: Array<T>) => void): Promise<Array<T>> {
+        return new Promise((resolve) => {
+            const complete = (value: Array<T>) => {
+                if (cb) {
+                    cb(value);
                 }
-            });
+
+                resolve(value);
+            }
+
+            const array: Array<T> = [];
+
+            this.consume<typeof array, never>((value, done) => {
+                if (is_end(value)) {
+                    done([ok(array), end()]);
+                } else if (is_ok(value)) {
+                    array.push(value.value);
+
+                    // Continually retry to pull everything out of the stream
+                    done();
+                } else {
+                    console.log(value);
+                    // Error of some type, work out what to do
+                    done();
+                }
+            })
+                .next((value) => {
+                    if (is_ok(value)) {
+                        complete(value.value);
+                    } else {
+                        // TODO: Work out what to do here
+                    }
+                });
+        });
     }
 
     /**
