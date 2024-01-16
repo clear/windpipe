@@ -3,10 +3,10 @@ export const ERROR = Symbol.for("ERROR");
 export const UNKNOWN = Symbol.for("UNKNOWN");
 export const END = Symbol.for("END");
 
-type AtomOk<T> = { type: typeof VALUE, value: T };
-type AtomErr<E> = { type: typeof ERROR, value: E };
-type AtomUnknown = { type: typeof UNKNOWN, value: unknown, trace: Array<string> };
-type AtomEnd = { type: typeof END };
+export type AtomOk<T> = { type: typeof VALUE, value: T };
+export type AtomErr<E> = { type: typeof ERROR, value: E };
+export type AtomUnknown = { type: typeof UNKNOWN, value: unknown, trace: Array<string> };
+export type AtomEnd = { type: typeof END };
 
 export type Atom<T, E> = 
      AtomOk<T> |

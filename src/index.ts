@@ -73,7 +73,7 @@ export class Stream<T, E> {
         try {
             return normalise(f());
         } catch (error) {
-            return unknown(err, this.trace);
+            return unknown(error, this.trace);
         };
     }
 
@@ -109,16 +109,18 @@ export class Stream<T, E> {
      * 
      * @internal
      */
-    next(cb: Callback<Atom<T, E>>) {
-        let emitted = false;
+    next(cb?: Callback<Atom<T, E>>): Promise<Atom<T, E>> {
+        return wrap_async(cb, (done) => {
+            let emitted = false;
 
-        this.atom_producer((value) => {
-            if (emitted) {
-                console.error("value emitted twice");
-            } else {
-                emitted = true;
-                cb(value);
-            }
+            this.atom_producer((value) => {
+                if (emitted) {
+                    console.error("value emitted twice");
+                } else {
+                    emitted = true;
+                    done(value);
+                }
+            });
         });
     }
 
