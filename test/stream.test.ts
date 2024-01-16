@@ -159,3 +159,31 @@ describe("t", () => {
         expect(s["trace"]).toMatchObject(["a", "b"]);
     });
 });
+
+describe("next", () => {
+    test("one call leads to one call of atom producer", async () => {
+        const atom_producer = vi.fn((done) => {
+            done(ok(1));
+        });
+
+        const s = new Stream(atom_producer);
+        await s.next();
+
+        expect(atom_producer).toBeCalledTimes(1);
+    });
+
+    test("multiple calls leads to same number of calls to atom producer", async () => {
+        const atom_producer = vi.fn((done) => {
+            done(ok(1));
+        });
+
+        const s = new Stream(atom_producer);
+
+        await s.next();
+        await s.next();
+        await s.next();
+        await s.next();
+
+        expect(atom_producer).toBeCalledTimes(4);
+    });
+});

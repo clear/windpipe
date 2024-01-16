@@ -106,8 +106,6 @@ export class Stream<T, E> {
 
     /**
      * Get the next atom in the stream, passing it to the provided callback upon resolution.
-     * 
-     * @internal
      */
     next(cb?: Callback<Atom<T, E>>): Promise<Atom<T, E>> {
         return wrap_async(cb, (done) => {
