@@ -1,19 +1,12 @@
+import { wrap_async } from "./async";
 import { type Atom, ok, err, unknown, end, is_ok, is_end } from "./atom";
 import { IfBuilder, type Condition, type ConditionHandler } from "./if_builder";
+import type { Callback, OptionalCallback } from "./types";
 import { normalise, type Value } from "./value";
 
 import { createReadStream } from "fs";
 import { Readable } from "stream";
 
-/**
- * Callback function consuming value of type `T`.
- */
-type Callback<T> = (value: T) => void;
-
-/**
- * Callback function consuming optional value of type `T`.
- */
-type OptionalCallback<T> = (value?: T) => void;
 
 /**
  * Every call of this function should produce a new atom for the stream. It takes a callback
@@ -393,15 +386,7 @@ export class Stream<T, E> {
      * @group Stream Consumption
      */
     toArray(cb?: (array: Array<T>) => void): Promise<Array<T>> {
-        return new Promise((resolve) => {
-            const complete = (value: Array<T>) => {
-                if (cb) {
-                    cb(value);
-                }
-
-                resolve(value);
-            }
-
+        return wrap_async(cb, (done) => {
             const array: Array<T> = [];
 
             this.consume<typeof array, never>((value, done) => {
@@ -420,12 +405,12 @@ export class Stream<T, E> {
             })
                 .next((value) => {
                     if (is_ok(value)) {
-                        complete(value.value);
+                        done(value.value);
                     } else {
                         // TODO: Work out what to do here
                     }
                 });
-        });
+        })
     }
 
     /**
@@ -434,7 +419,7 @@ export class Stream<T, E> {
      *
      * @group Stream Consumption
      */
-    forEach(cb: (value: T) => void) {
+    forEach(cb: Callback<T>) {
         this.consume_values((value, done) => {
             cb(value);
             done([]);
