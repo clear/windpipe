@@ -475,27 +475,7 @@ export class Stream<T, E> {
      *
      * @group Stream Creation
      */
-    static of<T, E>(value: ((cb: (value: T) => void) => void) | T): Stream<T, E> {
-        let emitted = false;
-
-        return new Stream((cb) => {
-            if (!emitted) {
-                emitted = true;
-
-                if (value instanceof Function) {
-                    value((value) => {
-                        cb(ok(value));
-                    });
-                } else {
-                    cb(ok(value));
-                }
-            } else {
-                cb(end());
-            }
-        });
-    }
-
-    static of_atom<T, E>(value: ((cb: (value: Value<T, E>) => void) => void) | Value<T, E>): Stream<T, E> {
+    static of<T, E>(value: ((cb: (value: Value<T, E>) => void) => void) | T): Stream<T, E> {
         let emitted = false;
 
         return new Stream((cb) => {
@@ -507,13 +487,14 @@ export class Stream<T, E> {
                         cb(normalise(value));
                     });
                 } else {
-                    cb(normalise(value));
+                    cb(ok(value));
                 }
             } else {
                 cb(end());
             }
         });
     }
+
     /**
      * Create a stream from some kind of value. This can be an iterable, a promise which resolves
      * to some value, or a readable stream.
