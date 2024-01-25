@@ -1,5 +1,5 @@
 import { wrap_async } from "./async";
-import { type Atom, ok, err, unknown, end, is_ok, is_end } from "./atom";
+import { type Atom, ok, err, unknown, end, is_ok, is_end, is_err } from "./atom";
 import { IfBuilder, type Condition, type ConditionHandler } from "./if_builder";
 import type { Callback, OptionalCallback } from "./types";
 import { normalise, type Value } from "./value";
@@ -227,6 +227,20 @@ export class Stream<T, E> {
             ));
 
             done([result]);
+        });
+    }
+
+    map_err<F>(op: (err: E) => F): Stream<T, F> {
+        this.t("map_err");
+
+        return this.consume((value, done) => {
+            if (is_err(value)) {
+                const result = op(value.value);
+
+                done([err(result)]);
+            } else {
+                done([value]);
+            }
         });
     }
 
