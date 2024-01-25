@@ -7,6 +7,9 @@ import { normalise, type Value } from "./value";
 import { createReadStream } from "fs";
 import { Readable } from "stream";
 
+export * from "./atom";
+export * from "./if_builder";
+export * from "./value";
 
 /**
  * Every call of this function should produce a new atom for the stream. It takes a callback
