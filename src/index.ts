@@ -89,7 +89,7 @@ export class Stream<T, E> {
         const s = new Stream(atom_producer);
 
         s.last_trace = this.last_trace;
-        s.trace = this.trace;
+        s.trace = [...this.trace];
 
         return s;
     }
