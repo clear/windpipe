@@ -230,6 +230,11 @@ export class Stream<T, E> {
         });
     }
 
+    /**
+     * Map over each error in the stream, turning it into a new error.
+     *
+     * @group Transforms
+     */
     map_err<F>(op: (err: E) => F): Stream<T, F> {
         this.t("map_err");
 
