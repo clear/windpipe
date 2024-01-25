@@ -321,10 +321,10 @@ export class Stream<T, E> {
      *
      * @group Higher Order Streams
      */
-    flat_map<U>(op: (value: T) => Stream<U, E>): Stream<U, E> {
+    flat_map<U = T, F = E>(op: (value: T) => Stream<U, F>): Stream<U, F> {
         this.t("flat_map");
 
-        let current_stream: Stream<U, E> | null = null;
+        let current_stream: Stream<U, F> | null = null;
 
         return this.clone_stream((provide_value) => {
             const pull_from_stream = () => {
@@ -687,4 +687,4 @@ async function run() {
     //     .toArray(console.log);
 }
 
-run();
+// run();
