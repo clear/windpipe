@@ -490,6 +490,25 @@ export class Stream<T, E> {
         });
     }
 
+    static of_atom<T, E>(value: ((cb: (value: Value<T, E>) => void) => void) | Value<T, E>): Stream<T, E> {
+        let emitted = false;
+
+        return new Stream((cb) => {
+            if (!emitted) {
+                emitted = true;
+
+                if (value instanceof Function) {
+                    value((value) => {
+                        cb(normalise(value));
+                    });
+                } else {
+                    cb(normalise(value));
+                }
+            } else {
+                cb(end());
+            }
+        });
+    }
     /**
      * Create a stream from some kind of value. This can be an iterable, a promise which resolves
      * to some value, or a readable stream.
