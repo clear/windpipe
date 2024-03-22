@@ -32,12 +32,42 @@ type Consumer<T, E, U, F> = (value: Atom<T, E>, done: OptionalCallback<Array<Val
 
 const nop = () => {};
 
+type FalliableStreamMarker = "fallible";
+type SingleStreamMarker = "single";
+type MultiStreamMarker = "multi";
+type AnyStreamKind = FalliableStreamMarker | SingleStreamMarker | MultiStreamMarker;
+
+/**
+ * Fallible streams may emit zero or more items.
+ */
+export type FallibleStream<T, E> = Stream<T, E, FalliableStreamMarker>;
+
+/**
+ * Single streams are guarenteed to emit a single item.
+ */
+export type SingleStream<T, E> = Stream<T, E, SingleStreamMarker>;
+
+/**
+ * Multi streams are guarenteed to emit one or more items.
+ */
+export type MultiStream<T, E> = Stream<T, E, MultiStreamMarker>;
+
+/**
+ * The most general kind of stream, which may emit zero or more items.
+ */
+export type AnyStream<T, E> = FallibleStream<T, E> | SingleStream<T, E> | MultiStream<T, E>;
+
+const __stream_brand: unique symbol = Symbol.for("stream brand");
+
 /**
  * Stream interface.
  *
  * @public
  */
-export class Stream<T, E> {
+export class Stream<T, E, Kind extends AnyStreamKind> {
+    /** @ts-ignore */
+    private [__stream_brand]: Kind;
+
     /**
      * Callback function that will produce the next stream atom.
      *
@@ -52,7 +82,7 @@ export class Stream<T, E> {
      *
      * @internal
      */
-    private last_trace: Stream<any, any> | null = null;
+    private last_trace: Stream<any, any, any> | null = null;
 
     /**
      * Current trace for this stream, used for nice error messages.
@@ -85,8 +115,8 @@ export class Stream<T, E> {
      *
      * @internal
      */
-    private clone_stream<U, F>(atom_producer: AtomProducer<U, F>): Stream<U, F> {
-        const s = new Stream(atom_producer);
+    private clone_stream<U, F>(atom_producer: AtomProducer<U, F>): Stream<U, F, Kind> {
+        const s = new Stream<U, F, Kind>(atom_producer);
 
         s.last_trace = this.last_trace;
         s.trace = [...this.trace];
@@ -128,7 +158,7 @@ export class Stream<T, E> {
     /**
      * @internal
      */
-    consume<U, F>(consumer: Consumer<T, E, U, F>): Stream<U, F> {
+    consume<U, F>(consumer: Consumer<T, E, U, F>): AnyStream<U, F> {
         this.t("consume");
 
         let queue: Array<Atom<U, F>> = [];
@@ -177,7 +207,7 @@ export class Stream<T, E> {
     /**
      * @internal
      */
-    consume_values<U>(consumer: (value: T, done: Callback<Array<Value<U, E>>>) => void): Stream<U, E> {
+    consume_values<U>(consumer: (value: T, done: Callback<Array<Value<U, E>>>) => void): AnyStream<U, E> {
         this.t("consume_values");
 
         return this.consume((value, done) => {
@@ -196,7 +226,7 @@ export class Stream<T, E> {
     /**
      * @internal
      */
-    push(value: T): Stream<T, E> {
+    push(value: T): MultiStream<T, E> {
         this.t("push");
 
         let pushed = false;
@@ -475,7 +505,7 @@ export class Stream<T, E> {
      *
      * @group Stream Creation
      */
-    static of<T, E>(value: ((cb: (value: Value<T, E>) => void) => void) | T): Stream<T, E> {
+    static of<T, E>(value: ((cb: (value: Value<T, E>) => void) => void) | Value<T, E>): SingleStream<T, E> {
         let emitted = false;
 
         return new Stream((cb) => {
@@ -487,7 +517,7 @@ export class Stream<T, E> {
                         cb(normalise(value));
                     });
                 } else {
-                    cb(ok(value));
+                    cb(normalise(value));
                 }
             } else {
                 cb(end());
@@ -501,7 +531,9 @@ export class Stream<T, E> {
      *
      * @group Stream Creation
      */
-    static from<T, E>(values: Iterable<T> | Promise<T> | Readable): Stream<T, E> {
+    static from<T, E>(values: Iterable<T> | Readable): FallibleStream<T, E>
+    static from<T, E>(values: Promise<T>): SingleStream<T, E>;
+    static from<T, E>(values: Iterable<T> | Promise<T> | Readable): FallibleStream<T, E> | SingleStream<T, E> {
         if (Symbol.iterator in values) {
             const iter = values[Symbol.iterator]();
 
@@ -557,7 +589,7 @@ export class Stream<T, E> {
      *
      * @group Stream Creation
      */
-    static empty<T, E>(): Stream<T, E> {
+    static empty<T, E>(): FallibleStream<T, E> {
         return new Stream((cb) => {
             cb(end());
         });
@@ -639,23 +671,23 @@ async function run() {
     Stream.from(readable_stream)
         .forEach(console.log);
 
-    Stream.from([1, 2, 3, 4, 5])
-        .if((value) => value % 2 === 0, (value) => (
-            Stream.of(value)
-                .tap((value) => console.log("even value", value))
-                .push(-value)
-        ))
-        .else_if((value) => value % 3 === 0, (_value) => (
-            Stream.of(10)
-        ))
-        .else((value) => {
-            console.log("else with", value);
-            return Stream.of(value);
-        })
-        .toArray((arr) => {
-            console.log("if else done");
-            console.log(arr);
-        });
+    // Stream.from([1, 2, 3, 4, 5])
+    //     .if((value) => value % 2 === 0, (value) => (
+    //         Stream.of(value)
+    //             .tap((value) => console.log("even value", value))
+    //             .push(-value)
+    //     ))
+    //     .else_if((value) => value % 3 === 0, (_value) => (
+    //         Stream.of(10)
+    //     ))
+    //     .else((value) => {
+    //         console.log("else with", value);
+    //         return Stream.of(value);
+    //     })
+    //     .toArray((arr) => {
+    //         console.log("if else done");
+    //         console.log(arr);
+    //     });
 
     // Stream.from([1, 2, 3, 4, 5])
     //     .case(
@@ -671,6 +703,15 @@ async function run() {
     //         }))
     //     )
     //     .toArray(console.log);
+
+
+    function my_fn(_s: SingleStream<string, any>) { }
+
+    const my_s = Stream.of("hi");
+    my_fn(my_s);
+
+    const e = Stream.empty<string, unknown>();
+    my_fn(e);
 }
 
 // run();

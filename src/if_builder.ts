@@ -1,14 +1,14 @@
-import type { Stream } from ".";
+import type { AnyStream, Stream } from ".";
 
 export type Condition<T> = (value: T) => boolean;
 
 export type ConditionHandler<T, E> = (value: T) => Stream<T, E>;
 
 export class IfBuilder<T, E> {
-    stream: Stream<T, E>;
+    stream: AnyStream<T, E>;
     conditions: Array<{ condition: Condition<T>, handler: ConditionHandler<T, E> }> = [];
 
-    constructor(stream: Stream<T, E>) {
+    constructor(stream: AnyStream<T, E>) {
         this.stream = stream;
     }
 
