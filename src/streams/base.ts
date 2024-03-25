@@ -3,7 +3,11 @@ import { Stream } from ".";
 import { Readable } from "stream";
 
 export class StreamBase {
-    protected stream: Readable = new Readable({ objectMode: true });
+    protected stream: Readable;
+
+    constructor(stream: Readable) {
+        this.stream = stream;
+    }
 
     /**
      * Create a stream from some kind of stream-like value. This can be an iterable, a promise that

@@ -3,12 +3,6 @@ import { StreamTransforms } from "./transforms";
 import { is_ok, type Atom } from "./atom";
 
 export class Stream<T, E> extends StreamTransforms<T, E> {
-    constructor(stream: Readable) {
-        super();
-
-        this.stream = stream;
-    }
-
     /**
      * Create a new stream with the provided atom producer.
      *
