@@ -38,7 +38,12 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
         });
     }
 
-    mapErr<F>(cb: (error: E) => MaybeAtom<T, F>): Stream<T, F> {
+    /**
+     * Map over each error in the stream.
+     *
+     * @group Transform
+     */
+    mapError<F>(cb: (error: E) => MaybeAtom<T, F>): Stream<T, F> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (is_err(atom)) {

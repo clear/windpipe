@@ -109,6 +109,26 @@ describe.concurrent("stream transforms", () => {
         });
     });
 
+    describe.concurrent("mapError", () => {
+        test("single error", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([err(1), ok(2), ok(3)])
+                .mapError((e) => ok("error"));
+
+            expect(await consumeStream(s)).toEqual([ok("error"), ok(2), ok(3)]);
+        });
+
+        test("multiple errors", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([err(1), ok(2), err(3)])
+                .mapError((e) => ok("error" + e));
+
+            expect(await consumeStream(s)).toEqual([ok("error1"), ok(2), ok("error3")]);
+        });
+    });
+
     describe.concurrent("filter", () => {
         test("synchronous values", async ({ expect }) => {
             expect.assertions(1);
