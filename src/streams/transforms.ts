@@ -5,30 +5,37 @@ import { is_ok, type MaybeAtom, type Atom, normalise } from "./atom";
 
 export class StreamTransforms<T, E> extends StreamBase<T, E> {
     /**
-     * Map over each value in the array.
+     * Consume the stream atoms, emitting new atoms from the generator.
      *
      * @group Transform
      */
-    map<U>(cb: (value: T) => MaybeAtom<U, E>): Stream<U, E> {
-        const { stream, writable } = Stream.writable<U, E>();
+    consume<U, F>(generator: (it: AsyncIterable<Atom<T, E>>) => AsyncGenerator<Atom<U, F>>): Stream<U, F> {
+        const { stream, writable } = Stream.writable<U, F>();
 
         pipeline(
             this.stream,
-            async function* (s): AsyncGenerator<Atom<U, E>> {
-                for await (const v of s as AsyncIterable<Atom<T, E>>) {
-                    if (is_ok(v)) {
-                        // Map over the value
-                        yield normalise(cb(v.value as T));
-                    } else {
-                        // Re-emit the non-value
-                        yield v;
-                    }
-                }
-            },
+            generator,
             writable,
         );
 
         return stream;
+    }
+
+    /**
+     * Map over each value in the stream.
+     *
+     * @group Transform
+     */
+    map<U>(cb: (value: T) => MaybeAtom<U, E>): Stream<U, E> {
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                if (is_ok(atom)) {
+                    yield normalise(cb(atom.value));
+                } else {
+                    yield atom;
+                }
+            }
+        });
     }
 
     /**
@@ -37,21 +44,13 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
      * @group Transform
      */
     filter(condition: (value: T) => boolean): Stream<T, E> {
-        const { stream, writable } = Stream.writable<T, E>();
-
-        pipeline(
-            this.stream,
-            async function* (s): AsyncGenerator<Atom<T, E>> {
-                for await (const v of s as AsyncIterable<Atom<T, E>>) {
-                    if ((is_ok(v) && condition(v.value as T)) || !is_ok(v)) {
-                        // Emit any value that passes the condition, or non-values
-                        yield v;
-                    }
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                if ((is_ok(atom) && condition(atom.value as T)) || !is_ok(atom)) {
+                    // Emit any value that passes the condition, or non-values
+                    yield atom;
                 }
-            },
-            writable,
-        );
-
-        return stream;
+            }
+        });
     }
 }
