@@ -1,29 +1,9 @@
+import { ok } from "./atom";
+import { Stream } from ".";
 import { Readable } from "stream";
-import { type Atom, ok } from "./atom";
 
-export class StreamBase<T, E> extends Readable {
-    /**
-     * Create a new stream with the provided atom producer.
-     *
-     * @param next - A callback method to produce the next atom. If no atom is available, then
-     * `null` must be returned.
-     */
-    constructor(next: () => Promise<Atom<T, E> | null>) {
-        super({
-            objectMode: true,
-            read: async () => {
-                const atom = await next();
-
-                if (atom !== null) {
-                    // Push the atom onto the stream
-                    this.push(atom);
-                } else {
-                    // Stream has finished, push `null` onto the stream to indicate this
-                    this.push(null);
-                }
-            },
-        });
-    }
+export class StreamBase {
+    protected stream: Readable = new Readable({ objectMode: true });
 
     /**
      * Create a stream from some kind of stream-like value. This can be an iterable, a promise that
@@ -31,7 +11,7 @@ export class StreamBase<T, E> extends Readable {
      *
      * @group Stream Creation
      */
-    static from<T, E>(value: Promise<T> | Iterator<T> | AsyncIterator<T> | Iterable<T> | AsyncIterable<T>): StreamBase<T, E> {
+    static from<T, E>(value: Promise<T> | Iterator<T> | AsyncIterator<T> | Iterable<T> | AsyncIterable<T>): Stream<T, E> {
         if (value instanceof Promise) {
             // Likely a promise
             return StreamBase.fromPromise(value);
@@ -58,10 +38,10 @@ export class StreamBase<T, E> extends Readable {
      *
      * @group Stream Creation
      */
-    static fromPromise<T, E>(promise: Promise<T>): StreamBase<T, E> {
+    static fromPromise<T, E>(promise: Promise<T>): Stream<T, E> {
         let awaited = false;
 
-        return new StreamBase(async () => {
+        return Stream.fromNext(async () => {
             if (!awaited) {
                 awaited = true;
 
@@ -80,8 +60,8 @@ export class StreamBase<T, E> extends Readable {
      *
      * @group Stream Creation
      */
-    static fromIterator<T, E>(iterator: Iterator<T> | AsyncIterator<T>): StreamBase<T, E> {
-        return new StreamBase(async () => {
+    static fromIterator<T, E>(iterator: Iterator<T> | AsyncIterator<T>): Stream<T, E> {
+        return Stream.fromNext(async () => {
             const result = iterator.next();
             const { value, done } = result instanceof Promise
                 ? (await result)
@@ -103,7 +83,7 @@ export class StreamBase<T, E> extends Readable {
      *
      * @group Stream Creation
      */
-    static fromIterable<T, E>(iterable: Iterable<T> | AsyncIterable<T>): StreamBase<T, E> {
+    static fromIterable<T, E>(iterable: Iterable<T> | AsyncIterable<T>): Stream<T, E> {
         if (Symbol.iterator in iterable) {
             return StreamBase.fromIterator(iterable[Symbol.iterator]());
         } else {
