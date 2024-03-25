@@ -1,7 +1,8 @@
 import { pipeline } from "stream/promises";
 import { Stream } from ".";
 import { StreamBase } from "./base";
-import { isOk, isUnknown, type MaybeAtom, type Atom, normalise, isError } from "./atom";
+import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown } from "./atom";
+import { handler, type MaybePromise } from "./handler";
 
 export class StreamTransforms<T, E> extends StreamBase<T, E> {
     /**
@@ -26,11 +27,14 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
      *
      * @group Transform
      */
-    map<U>(cb: (value: T) => MaybeAtom<U, E>): Stream<U, E> {
+    map<U>(cb: (value: T) => MaybePromise<MaybeAtom<U, E>>): Stream<U, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isOk(atom)) {
-                    yield normalise(cb(atom.value));
+                    yield await handler(
+                        () => cb(atom.value),
+                        []
+                    );
                 } else {
                     yield atom;
                 }
@@ -43,11 +47,14 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
      *
      * @group Transform
      */
-    mapError<F>(cb: (error: E) => MaybeAtom<T, F>): Stream<T, F> {
+    mapError<F>(cb: (error: E) => MaybePromise<MaybeAtom<T, F>>): Stream<T, F> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isError(atom)) {
-                    yield normalise(cb(atom.value));
+                    yield await handler(
+                        () => cb(atom.value),
+                        []
+                    );
                 } else {
                     yield atom;
                 }
@@ -60,11 +67,14 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
      *
      * @group Transform
      */
-    mapUnknown(cb: (error: unknown) => MaybeAtom<T, E>): Stream<T, E> {
+    mapUnknown(cb: (error: unknown) => MaybePromise<MaybeAtom<T, E>>): Stream<T, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isUnknown(atom)) {
-                    yield normalise(cb(atom.value));
+                    yield await handler(
+                        () => cb(atom.value),
+                        [],
+                    );
                 } else {
                     yield atom;
                 }
@@ -77,12 +87,26 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
      *
      * @group Transform
      */
-    filter(condition: (value: T) => boolean): Stream<T, E> {
+    filter(condition: (value: T) => MaybePromise<boolean>): Stream<T, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
-                if ((isOk(atom) && condition(atom.value as T)) || !isOk(atom)) {
-                    // Emit any value that passes the condition, or non-values
+                // Re-emit any existing errors onto the stream
+                if (!isOk(atom)) {
                     yield atom;
+                }
+
+                // Run the filter condition
+                const filter = await handler(() => condition(atom.value as T), [])
+
+                if (isOk(filter) && filter.value) {
+                    yield atom;
+                } else if (!isOk(filter)) {
+                    // Non-value returned from the filter
+                    const error: Error & { detail?: any } = new Error(
+                        "non-ok value returned from filter condition"
+                    );
+                    error.detail = filter;
+                    yield unknown(error, []);
                 }
             }
         });

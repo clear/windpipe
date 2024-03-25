@@ -107,6 +107,15 @@ describe.concurrent("stream transforms", () => {
 
             expect(await consumeStream(s)).toEqual([ok(1), error("number 2"), ok(3)]);
         });
+
+        test("asynchronous value", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([1, 2, 3])
+                .map(async (n) => n * 10);
+
+            expect(await consumeStream(s)).toEqual([ok(10), ok(20), ok(30)]);
+        });
     });
 
     describe.concurrent("mapError", () => {
