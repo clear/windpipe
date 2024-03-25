@@ -1,6 +1,6 @@
 import { describe, test } from "vitest";
 import { Stream } from "../../src/streams";
-import { ok, type Atom } from "../../src/streams/atom";
+import { ok, err, type Atom } from "../../src/streams/atom";
 import { Readable } from "stream";
 
 async function consumeStream<T, E>(s: Stream<T, E>): Promise<Atom<T, E>[]> {
@@ -69,13 +69,73 @@ describe.concurrent("stream creation", () => {
 
 describe.concurrent("stream transforms", () => {
     describe.concurrent("map", () => {
-        test("synchronous", async ({ expect }) => {
+        test("synchronous value", async ({ expect }) => {
             expect.assertions(1);
 
             const s = Stream.from([1, 2, 3])
                 .map((n) => n * 10);
 
             expect(await consumeStream(s)).toEqual([ok(10), ok(20), ok(30)]);
+        });
+
+        test("synchronous atom", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([1, 2, 3])
+                .map((n) => {
+                    if (n === 2) {
+                        return err("number 2");
+                    } else {
+                        return ok(n);
+                    }
+                });
+
+            expect(await consumeStream(s)).toEqual([ok(1), err("number 2"), ok(3)]);
+        });
+
+        test("synchronous mix", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([1, 2, 3])
+                .map((n) => {
+                    if (n === 2) {
+                        return err("number 2");
+                    } else {
+                        return n;
+                    }
+                });
+
+            expect(await consumeStream(s)).toEqual([ok(1), err("number 2"), ok(3)]);
+        });
+    });
+
+    describe.concurrent("filter", () => {
+        test("synchronous values", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([1, 2, 3, 4])
+                .filter((n) => n % 2 === 0);
+
+            expect(await consumeStream(s)).toEqual([ok(2), ok(4)]);
+        });
+
+        test("synchronous atoms", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([1, 2, 3, 4])
+                // Emit an error for testing
+                .map((n): MaybeAtom<number, string> => {
+                    if (n === 1) {
+                        return err("an error");
+                    }
+
+                    return n;
+                })
+
+                // Perform the actual filter operation
+                .filter((n) => n % 2 === 0);
+
+            expect(await consumeStream(s)).toEqual([err("an error"), ok(2), ok(4)]);
         });
     });
 });
