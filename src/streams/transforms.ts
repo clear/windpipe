@@ -3,7 +3,7 @@ import { Stream } from ".";
 import { StreamBase } from "./base";
 import { is_ok, type MaybeAtom, type Atom, normalise } from "./atom";
 
-export class StreamTransforms<T, E> extends StreamBase {
+export class StreamTransforms<T, E> extends StreamBase<T, E> {
     /**
      * Map over each value in the array.
      *
