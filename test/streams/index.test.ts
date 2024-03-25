@@ -122,16 +122,7 @@ describe.concurrent("stream transforms", () => {
         test("synchronous atoms", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = Stream.from([1, 2, 3, 4])
-                // Emit an error for testing
-                .map((n): MaybeAtom<number, string> => {
-                    if (n === 1) {
-                        return err("an error");
-                    }
-
-                    return n;
-                })
-
+            const s = Stream.from<number, string>([1, err("an error"), 2, 3, 4])
                 // Perform the actual filter operation
                 .filter((n) => n % 2 === 0);
 

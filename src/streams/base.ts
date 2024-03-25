@@ -1,6 +1,12 @@
-import { ok, type Atom, is_ok } from "./atom";
+import { normalise, type Atom, is_ok, type MaybeAtom } from "./atom";
 import { Stream } from ".";
 import { Readable, Writable } from "stream";
+
+/**
+ * Marker for the end of a stream.
+ */
+export const StreamEnd = Symbol.for("STREAM_END");
+export type StreamEnd = typeof StreamEnd;
 
 export class StreamBase<T, E> {
     protected stream: Readable;
@@ -15,7 +21,7 @@ export class StreamBase<T, E> {
      *
      * @group Creation
      */
-    static from<T, E>(value: Promise<T> | Iterator<T> | AsyncIterator<T> | Iterable<T> | AsyncIterable<T> | (() => Promise<Atom<T, E>>)): Stream<T, E> {
+    static from<T, E>(value: Promise<MaybeAtom<T, E>> | Iterator<MaybeAtom<T, E>> | AsyncIterator<MaybeAtom<T, E>> | Iterable<MaybeAtom<T, E>> | AsyncIterable<MaybeAtom<T, E>> | (() => Promise<MaybeAtom<T, E>>)): Stream<T, E> {
         if (value instanceof Promise) {
             // Likely a promise
             return StreamBase.fromPromise(value);
@@ -47,17 +53,16 @@ export class StreamBase<T, E> {
      *
      * @group Creation
      */
-    static fromPromise<T, E>(promise: Promise<T>): Stream<T, E> {
+    static fromPromise<T, E>(promise: Promise<MaybeAtom<T, E>>): Stream<T, E> {
         let awaited = false;
 
         return Stream.fromNext(async () => {
             if (!awaited) {
                 awaited = true;
 
-                const value = await promise;
-                return ok(value);
+                return normalise(await promise);
             } else {
-                return null;
+                return StreamEnd;
             }
         });
     }
@@ -69,7 +74,7 @@ export class StreamBase<T, E> {
      *
      * @group Creation
      */
-    static fromIterator<T, E>(iterator: Iterator<T> | AsyncIterator<T>): Stream<T, E> {
+    static fromIterator<T, E>(iterator: Iterator<MaybeAtom<T, E>> | AsyncIterator<MaybeAtom<T, E>>): Stream<T, E> {
         return Stream.fromNext(async () => {
             const result = iterator.next();
             const { value, done } = result instanceof Promise
@@ -77,9 +82,9 @@ export class StreamBase<T, E> {
                 : result;
 
             if (done) {
-                return null;
+                return StreamEnd;
             } else {
-                return ok(value);
+                return normalise(value);
             }
         });
     }
@@ -92,7 +97,7 @@ export class StreamBase<T, E> {
      *
      * @group Creation
      */
-    static fromIterable<T, E>(iterable: Iterable<T> | AsyncIterable<T>): Stream<T, E> {
+    static fromIterable<T, E>(iterable: Iterable<MaybeAtom<T, E>> | AsyncIterable<MaybeAtom<T, E>>): Stream<T, E> {
         if (Symbol.iterator in iterable) {
             return StreamBase.fromIterator(iterable[Symbol.iterator]());
         } else {
@@ -104,15 +109,21 @@ export class StreamBase<T, E> {
      * Create a new stream with the provided atom producer.
      *
      * @param next - A callback method to produce the next atom. If no atom is available, then
-     * `null` must be returned.
+     * `StreamEnd` must be returned.
      *
      * @group Creation
      */
-    static fromNext<T, E>(next: () => Promise<Atom<T, E> | null>): Stream<T, E> {
+    static fromNext<T, E>(next: () => Promise<MaybeAtom<T, E> | StreamEnd>): Stream<T, E> {
         return new Stream(new Readable({
             objectMode: true,
             async read() {
-                this.push(await next());
+                const value = await next();
+
+                if (value === StreamEnd) {
+                    this.push(null)
+                } else {
+                    this.push(normalise(value));
+                }
             },
         }));
     }
@@ -135,7 +146,7 @@ export class StreamBase<T, E> {
             return promise as Semaphore<T>;
         }
 
-        let nextValue = semaphore<Atom<T, E> | null>();
+        let nextValue = semaphore<Atom<T, E> | StreamEnd>();
         let valueRead = semaphore<void>();
 
         // The writable stream that will receive the transformed value.
@@ -151,8 +162,8 @@ export class StreamBase<T, E> {
                 callback();
             },
             async final(callback) {
-                // Emit a `null` to close the stream
-                nextValue.resolve(null);
+                // Emit a `StreamEnd` to close the stream
+                nextValue.resolve(StreamEnd);
 
                 // Wait for the read before continuing to close stream
                 await valueRead;

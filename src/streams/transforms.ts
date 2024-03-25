@@ -1,7 +1,7 @@
 import { pipeline } from "stream/promises";
 import { Stream } from ".";
 import { StreamBase } from "./base";
-import { is_ok, type MaybeAtom, type Atom, normalise } from "./atom";
+import { is_ok, type MaybeAtom, type Atom, normalise, is_err } from "./atom";
 
 export class StreamTransforms<T, E> extends StreamBase<T, E> {
     /**
@@ -30,6 +30,18 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (is_ok(atom)) {
+                    yield normalise(cb(atom.value));
+                } else {
+                    yield atom;
+                }
+            }
+        });
+    }
+
+    mapErr<F>(cb: (error: E) => MaybeAtom<T, F>): Stream<T, F> {
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                if (is_err(atom)) {
                     yield normalise(cb(atom.value));
                 } else {
                     yield atom;
