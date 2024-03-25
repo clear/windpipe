@@ -1,7 +1,7 @@
 import { pipeline } from "stream/promises";
 import { Stream } from ".";
 import { StreamBase } from "./base";
-import { is_ok, is_unknown, type MaybeAtom, type Atom, normalise, is_err } from "./atom";
+import { isOk, isUnknown, type MaybeAtom, type Atom, normalise, isError } from "./atom";
 
 export class StreamTransforms<T, E> extends StreamBase<T, E> {
     /**
@@ -29,7 +29,7 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
     map<U>(cb: (value: T) => MaybeAtom<U, E>): Stream<U, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
-                if (is_ok(atom)) {
+                if (isOk(atom)) {
                     yield normalise(cb(atom.value));
                 } else {
                     yield atom;
@@ -46,7 +46,7 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
     mapError<F>(cb: (error: E) => MaybeAtom<T, F>): Stream<T, F> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
-                if (is_err(atom)) {
+                if (isError(atom)) {
                     yield normalise(cb(atom.value));
                 } else {
                     yield atom;
@@ -63,7 +63,7 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
     mapUnknown(cb: (error: unknown) => MaybeAtom<T, E>): Stream<T, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
-                if (is_unknown(atom)) {
+                if (isUnknown(atom)) {
                     yield normalise(cb(atom.value));
                 } else {
                     yield atom;
@@ -80,7 +80,7 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
     filter(condition: (value: T) => boolean): Stream<T, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
-                if ((is_ok(atom) && condition(atom.value as T)) || !is_ok(atom)) {
+                if ((isOk(atom) && condition(atom.value as T)) || !isOk(atom)) {
                     // Emit any value that passes the condition, or non-values
                     yield atom;
                 }

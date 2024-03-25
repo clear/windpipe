@@ -1,6 +1,6 @@
 import { describe, test } from "vitest";
 import { Stream } from "../../src/streams";
-import { ok, err, type Atom, unknown } from "../../src/streams/atom";
+import { ok, error, type Atom, unknown } from "../../src/streams/atom";
 import { Readable } from "stream";
 
 async function consumeStream<T, E>(s: Stream<T, E>): Promise<Atom<T, E>[]> {
@@ -84,13 +84,13 @@ describe.concurrent("stream transforms", () => {
             const s = Stream.from([1, 2, 3])
                 .map((n) => {
                     if (n === 2) {
-                        return err("number 2");
+                        return error("number 2");
                     } else {
                         return ok(n);
                     }
                 });
 
-            expect(await consumeStream(s)).toEqual([ok(1), err("number 2"), ok(3)]);
+            expect(await consumeStream(s)).toEqual([ok(1), error("number 2"), ok(3)]);
         });
 
         test("synchronous mix", async ({ expect }) => {
@@ -99,13 +99,13 @@ describe.concurrent("stream transforms", () => {
             const s = Stream.from([1, 2, 3])
                 .map((n) => {
                     if (n === 2) {
-                        return err("number 2");
+                        return error("number 2");
                     } else {
                         return n;
                     }
                 });
 
-            expect(await consumeStream(s)).toEqual([ok(1), err("number 2"), ok(3)]);
+            expect(await consumeStream(s)).toEqual([ok(1), error("number 2"), ok(3)]);
         });
     });
 
@@ -113,7 +113,7 @@ describe.concurrent("stream transforms", () => {
         test("single error", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = Stream.from([err(1), ok(2), ok(3)])
+            const s = Stream.from([error(1), ok(2), ok(3)])
                 .mapError((e) => ok("error"));
 
             expect(await consumeStream(s)).toEqual([ok("error"), ok(2), ok(3)]);
@@ -122,7 +122,7 @@ describe.concurrent("stream transforms", () => {
         test("multiple errors", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = Stream.from([err(1), ok(2), err(3)])
+            const s = Stream.from([error(1), ok(2), error(3)])
                 .mapError((e) => ok("error" + e));
 
             expect(await consumeStream(s)).toEqual([ok("error1"), ok(2), ok("error3")]);
@@ -134,18 +134,18 @@ describe.concurrent("stream transforms", () => {
             expect.assertions(1);
 
             const s = Stream.from([unknown(1, []), ok(2), ok(3)])
-                .mapUnknown((e) => err(e));
+                .mapUnknown((e) => error(e));
 
-            expect(await consumeStream(s)).toEqual([err(1), ok(2), ok(3)]);
+            expect(await consumeStream(s)).toEqual([error(1), ok(2), ok(3)]);
         });
 
         test("multiple unknown", async ({ expect }) => {
             expect.assertions(1);
 
             const s = Stream.from([unknown(1, []), ok(2), unknown(3, [])])
-                .mapUnknown((e) => err(e));
+                .mapUnknown((e) => error(e));
 
-            expect(await consumeStream(s)).toEqual([err(1), ok(2), err(3)]);
+            expect(await consumeStream(s)).toEqual([error(1), ok(2), error(3)]);
         });
     });
 
@@ -162,11 +162,11 @@ describe.concurrent("stream transforms", () => {
         test("synchronous atoms", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = Stream.from<number, string>([1, err("an error"), 2, 3, 4])
+            const s = Stream.from<number, string>([1, error("an error"), 2, 3, 4])
                 // Perform the actual filter operation
                 .filter((n) => n % 2 === 0);
 
-            expect(await consumeStream(s)).toEqual([err("an error"), ok(2), ok(4)]);
+            expect(await consumeStream(s)).toEqual([error("an error"), ok(2), ok(4)]);
         });
     });
 });

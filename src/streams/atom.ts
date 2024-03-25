@@ -13,12 +13,12 @@ export type Atom<T, E> =
 export type MaybeAtom<T, E> = T | Atom<T, E>;
 
 export const ok = <T, E>(value: T): Atom<T, E> => ({ type: VALUE, value });
-export const err = <T, E>(err: E): Atom<T, E> => ({ type: ERROR, value: err });
-export const unknown = <T, E>(err: unknown, trace: Array<string>): Atom<T, E> => ({ type: UNKNOWN, value: err, trace: [...trace] });
+export const error = <T, E>(error: E): Atom<T, E> => ({ type: ERROR, value: error });
+export const unknown = <T, E>(error: unknown, trace: Array<string>): Atom<T, E> => ({ type: UNKNOWN, value: error, trace: [...trace] });
 
-export const is_ok = <T, E>(atom: Atom<T, E>): atom is AtomOk<T> => atom.type === VALUE;
-export const is_err = <T, E>(atom: Atom<T, E>): atom is AtomErr<E> => atom.type === ERROR;
-export const is_unknown = <T, E>(atom: Atom<T, E>): atom is AtomUnknown => atom.type === UNKNOWN;
+export const isOk = <T, E>(atom: Atom<T, E>): atom is AtomOk<T> => atom.type === VALUE;
+export const isError = <T, E>(atom: Atom<T, E>): atom is AtomErr<E> => atom.type === ERROR;
+export const isUnknown = <T, E>(atom: Atom<T, E>): atom is AtomUnknown => atom.type === UNKNOWN;
 
 /**
  * Given some value (which may or may not be an atom), convert it into an atom. If it is not an
@@ -30,9 +30,9 @@ export function normalise<T, E>(value: MaybeAtom<T, E>): Atom<T, E> {
             && typeof value ==="object"
             && "type" in value
             && (
-                is_ok(value)
-                || is_err(value)
-                || is_unknown(value)
+                isOk(value)
+                || isError(value)
+                || isUnknown(value)
             )
     ) {
         return value;

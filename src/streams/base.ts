@@ -1,4 +1,4 @@
-import { normalise, type Atom, is_ok, type MaybeAtom } from "./atom";
+import { normalise, type Atom, isOk, type MaybeAtom } from "./atom";
 import { Stream } from ".";
 import { Readable, Writable } from "stream";
 
@@ -217,7 +217,7 @@ export class StreamBase<T, E> {
 
                 if (done) {
                     return { value, done: true };
-                } else if (is_ok(value)) {
+                } else if (isOk(value)) {
                     return { value: value.value };
                 } else {
                     return await this.next();
