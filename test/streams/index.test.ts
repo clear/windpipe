@@ -1,6 +1,6 @@
 import { describe, test } from "vitest";
 import { Stream } from "../../src/streams";
-import { ok, err, type Atom } from "../../src/streams/atom";
+import { ok, err, type Atom, unknown } from "../../src/streams/atom";
 import { Readable } from "stream";
 
 async function consumeStream<T, E>(s: Stream<T, E>): Promise<Atom<T, E>[]> {
@@ -126,6 +126,26 @@ describe.concurrent("stream transforms", () => {
                 .mapError((e) => ok("error" + e));
 
             expect(await consumeStream(s)).toEqual([ok("error1"), ok(2), ok("error3")]);
+        });
+    });
+
+    describe.concurrent("mapUnknown", () => {
+        test("single unknown", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([unknown(1, []), ok(2), ok(3)])
+                .mapUnknown((e) => err(e));
+
+            expect(await consumeStream(s)).toEqual([err(1), ok(2), ok(3)]);
+        });
+
+        test("multiple unknown", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([unknown(1, []), ok(2), unknown(3, [])])
+                .mapUnknown((e) => err(e));
+
+            expect(await consumeStream(s)).toEqual([err(1), ok(2), err(3)]);
         });
     });
 

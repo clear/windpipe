@@ -1,7 +1,7 @@
 import { pipeline } from "stream/promises";
 import { Stream } from ".";
 import { StreamBase } from "./base";
-import { is_ok, type MaybeAtom, type Atom, normalise, is_err } from "./atom";
+import { is_ok, is_unknown, type MaybeAtom, type Atom, normalise, is_err } from "./atom";
 
 export class StreamTransforms<T, E> extends StreamBase<T, E> {
     /**
@@ -47,6 +47,23 @@ export class StreamTransforms<T, E> extends StreamBase<T, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (is_err(atom)) {
+                    yield normalise(cb(atom.value));
+                } else {
+                    yield atom;
+                }
+            }
+        });
+    }
+
+    /**
+     * Map over each unknown in the stream.
+     *
+     * @group Transform
+     */
+    mapUnknown(cb: (error: unknown) => MaybeAtom<T, E>): Stream<T, E> {
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                if (is_unknown(atom)) {
                     yield normalise(cb(atom.value));
                 } else {
                     yield atom;
