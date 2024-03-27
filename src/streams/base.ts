@@ -10,9 +10,30 @@ export type StreamEnd = typeof StreamEnd;
 
 export class StreamBase<T, E> {
     protected stream: Readable;
+    protected stackTrace: string[] = [];
+    protected traceComplete: boolean = false;
 
     constructor(stream: Readable) {
         this.stream = stream;
+    }
+
+    /**
+     * Add a layer to the trace object. Returns a copy of the current trace.
+     */
+    protected trace(trace: string) {
+        if (!this.traceComplete) {
+            this.stackTrace.push(trace);
+            this.traceComplete = true;
+        }
+
+        return this.getTrace();
+    }
+
+    /**
+     * Capture the current trace. Creates a clone of the trace to prevent it being modified.
+     */
+    protected getTrace(): string[] {
+        return [...this.stackTrace];
     }
 
     /**
