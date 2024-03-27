@@ -272,3 +272,62 @@ describe.concurrent("error handling", () => {
         ]);
     });
 });
+
+describe.concurrent("higher order streams", () => {
+    describe.concurrent("flat map", () => {
+        test("returning stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([1, 2, 3])
+                .flatMap((n) => Stream.from(new Array(n).fill(n)));
+
+            expect(await consumeStream(s)).toEqual([
+                ok(1),
+                ok(2),
+                ok(2),
+                ok(3),
+                ok(3),
+                ok(3),
+            ]);
+        });
+
+        test("returning stream or error", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([1, 2, 3])
+                .flatMap<number>((n) => {
+                    if (n === 2) {
+                        return error("number two");
+                    }
+
+                    return Stream.from(new Array(n).fill(n));
+                });
+
+            expect(await consumeStream(s)).toEqual([
+                ok(1),
+                error("number two"),
+                ok(3),
+                ok(3),
+                ok(3),
+            ]);
+        });
+
+        test("errors already in stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([ok(1), error("known error"), ok(2), unknown("bad error", []), ok(3)])
+                .flatMap((n) => Stream.from(new Array(n).fill(n)));
+
+            expect(await consumeStream(s)).toEqual([
+                ok(1),
+                error("known error"),
+                ok(2),
+                ok(2),
+                unknown("bad error", []),
+                ok(3),
+                ok(3),
+                ok(3),
+            ]);
+        });
+    });
+});

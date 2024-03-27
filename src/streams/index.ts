@@ -1,4 +1,4 @@
-import { StreamTransforms } from "./transforms";
+import { HigherOrderStream } from "./higher-order";
 
-export class Stream<T, E> extends StreamTransforms<T, E> {
+export class Stream<T, E> extends HigherOrderStream<T, E> {
 }
