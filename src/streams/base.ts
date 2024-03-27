@@ -1,4 +1,4 @@
-import { normalise, type Atom, isOk, type MaybeAtom } from "./atom";
+import { normalise, type Atom, type MaybeAtom } from "./atom";
 import { Stream } from ".";
 import { Readable, Writable } from "stream";
 
@@ -213,37 +213,5 @@ export class StreamBase<T, E> {
             }),
             writable,
         };
-    }
-
-    /**
-     * Create an iterator that will emit each atom in the stream.
-     *
-     * @group Consumption
-     */
-    [Symbol.asyncIterator](): AsyncIterator<Atom<T, E>> {
-        return this.stream[Symbol.asyncIterator]();
-    }
-
-    /**
-     * Create an async iterator that will emit each value in the stream.
-     *
-     * @group Consumption
-     */
-    values(): AsyncIterator<T> {
-        const it = this[Symbol.asyncIterator]();
-
-        return {
-             async next() {
-                const { value, done } = await it.next();
-
-                if (done) {
-                    return { value, done: true };
-                } else if (isOk(value)) {
-                    return { value: value.value };
-                } else {
-                    return await this.next();
-                }
-            }
-        }
     }
 }

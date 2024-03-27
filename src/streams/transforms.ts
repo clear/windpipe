@@ -1,10 +1,10 @@
 import { pipeline } from "stream/promises";
 import { Stream } from ".";
-import { StreamBase } from "./base";
 import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown } from "./atom";
 import { handler, type MaybePromise } from "./handler";
+import { StreamConsumption } from "./consumption";
 
-export class StreamTransforms<T, E> extends StreamBase<T, E> {
+export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     /**
      * Consume the stream atoms, emitting new atoms from the generator.
      *
