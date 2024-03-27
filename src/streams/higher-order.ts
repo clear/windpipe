@@ -35,4 +35,32 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
             }
         });
     }
+
+    /**
+     * Emit items from provided stream if this stream is completely empty.
+     *
+     * @note If there are any errors (known or unknown) on the stream, then the new stream won't be
+     * consumed.
+     *
+     * @group Higher Order
+     */
+    otherwise(cbOrStream: (() => Stream<T, E>) | Stream<T, E>): Stream<T, E> {
+        return this.consume(async function* (it) {
+            // Count the items being emitted from the iterator
+            let count = 0;
+            for await (const atom of it) {
+                count += 1;
+                yield atom;
+            }
+
+            // If nothing was emitted, then create the stream and emit it
+            if (count === 0) {
+                if (typeof cbOrStream === "function") {
+                    yield* cbOrStream();
+                } else {
+                    yield* cbOrStream;
+                }
+            }
+        });
+    }
 }

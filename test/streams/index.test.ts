@@ -1,4 +1,4 @@
-import { describe, test } from "vitest";
+import { describe, test, vi } from "vitest";
 import { Stream } from "../../src/streams";
 import { ok, error, type Atom, unknown } from "../../src/streams/atom";
 import { Readable } from "stream";
@@ -328,6 +328,73 @@ describe.concurrent("higher order streams", () => {
                 ok(3),
                 ok(3),
             ]);
+        });
+    });
+
+    describe.concurrent("otherwise", () => {
+        test("empty stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from<number, unknown>([])
+                .otherwise(Stream.from([1, 2]));
+
+            expect(await consumeStream(s)).toEqual([
+                ok(1),
+                ok(2),
+            ]);
+        });
+
+        test("non-empty stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([1])
+                .otherwise(Stream.from([2, 3]));
+
+            expect(await consumeStream(s)).toEqual([
+                ok(1),
+            ]);
+        });
+
+        test("empty stream with otherwise function", async ({ expect }) => {
+            expect.assertions(2);
+
+            const otherwise = vi.fn().mockReturnValue(Stream.from([1, 2]));
+
+            const s = Stream.from<number, unknown>([])
+                .otherwise(otherwise);
+
+            expect(await consumeStream(s)).toEqual([ok(1), ok(2)]);
+            expect(otherwise).toHaveBeenCalledOnce();
+        });
+
+        test("non-empty stream with otherwise function", async ({ expect }) => {
+            expect.assertions(2);
+
+            const otherwise = vi.fn().mockReturnValue(Stream.from([2, 3]));
+
+            const s = Stream.from<number, unknown>([1])
+                .otherwise(otherwise);
+
+            expect(await consumeStream(s)).toEqual([ok(1)]);
+            expect(otherwise).not.toHaveBeenCalled();
+        });
+
+        test("stream with known error", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([error("some error")])
+                .otherwise(Stream.from([1]));
+
+            expect(await consumeStream(s)).toEqual([error("some error")]);
+        });
+
+        test("stream with unknown error", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = Stream.from([unknown("some error", [])])
+                .otherwise(Stream.from([1]));
+
+            expect(await consumeStream(s)).toEqual([unknown("some error", [])]);
         });
     });
 });
