@@ -1,4 +1,4 @@
-import { normalise, type Atom, type MaybeAtom } from "./atom";
+import { normalise, type Atom, type MaybeAtom } from "../atom";
 import { Stream } from ".";
 import { Readable, Writable } from "stream";
 

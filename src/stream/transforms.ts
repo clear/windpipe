@@ -1,7 +1,7 @@
 import { pipeline } from "stream/promises";
 import { Stream } from ".";
-import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown } from "./atom";
-import { handler, type MaybePromise } from "./handler";
+import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown } from "../atom";
+import { handler, type MaybePromise } from "../handler";
 import { StreamConsumption } from "./consumption";
 
 export class StreamTransforms<T, E> extends StreamConsumption<T, E> {

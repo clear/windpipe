@@ -1,6 +1,6 @@
 import type { Stream } from ".";
-import { isOk, type MaybeAtom } from "./atom";
-import { handler, type MaybePromise } from "./handler";
+import { isOk, type MaybeAtom } from "../atom";
+import { handler, type MaybePromise } from "../handler";
 import { StreamTransforms } from "./transforms";
 
 export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {

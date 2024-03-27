@@ -1,4 +1,4 @@
-import { isOk, type Atom } from "./atom";
+import { isOk, type Atom } from "../atom";
 import { StreamBase } from "./base";
 
 export class StreamConsumption<T, E> extends StreamBase<T, E> {
