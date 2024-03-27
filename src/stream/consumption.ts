@@ -1,7 +1,7 @@
 import { isOk, type Atom } from "../atom";
 import { StreamBase } from "./base";
 
-export class StreamConsumption<T, E> extends StreamBase<T, E> {
+export class StreamConsumption<T, E> extends StreamBase {
     /**
      * Create an iterator that will emit each atom in the stream.
      *

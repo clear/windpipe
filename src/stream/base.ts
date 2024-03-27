@@ -8,7 +8,7 @@ import { Readable, Writable } from "stream";
 export const StreamEnd = Symbol.for("STREAM_END");
 export type StreamEnd = typeof StreamEnd;
 
-export class StreamBase<T, E> {
+export class StreamBase {
     protected stream: Readable;
     protected stackTrace: string[] = [];
     protected traceComplete: boolean = false;
