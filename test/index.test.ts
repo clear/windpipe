@@ -1,6 +1,6 @@
 import { describe, test, vi } from "vitest";
-import { Stream } from "../../src/streams";
-import { ok, error, unknown } from "../../src/streams/atom";
+import { Stream } from "../src";
+import { ok, error, unknown } from "../src/atom";
 import { Readable } from "stream";
 
 describe.concurrent("stream creation", () => {
