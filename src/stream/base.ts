@@ -42,7 +42,12 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static from<T, E>(value: Promise<MaybeAtom<T, E>> | Iterator<MaybeAtom<T, E>> | AsyncIterator<MaybeAtom<T, E>> | Iterable<MaybeAtom<T, E>> | AsyncIterable<MaybeAtom<T, E>> | (() => Promise<MaybeAtom<T, E>>)): Stream<T, E> {
+    static from<T, E>(value: Promise<MaybeAtom<T, E>> | Iterator<MaybeAtom<T, E>> | AsyncIterator<MaybeAtom<T, E>> | Iterable<MaybeAtom<T, E>> | AsyncIterable<MaybeAtom<T, E>> | Array<MaybeAtom<T, E>> | (() => Promise<MaybeAtom<T, E>>)): Stream<T, E> {
+        if (Array.isArray(value)) {
+            // Likely an array
+            return StreamBase.fromArray(value);
+        }
+
         if (value instanceof Promise) {
             // Likely a promise
             return StreamBase.fromPromise(value);
@@ -124,6 +129,19 @@ export class StreamBase {
         } else {
             return StreamBase.fromIterator(iterable[Symbol.asyncIterator]());
         }
+    }
+
+    /**
+     * Create a stream from an array.
+     *
+     * @param array - The array that values will be emitted from.
+     *
+     * @group Creation
+     */
+    static fromArray<T, E>(array: MaybeAtom<T, E>[]): Stream<T, E> {
+        return Stream.fromNext(async () => {
+            return array.shift() ?? StreamEnd;
+        });
     }
 
     /**
