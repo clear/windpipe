@@ -113,7 +113,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
 
         return this.consume(async function* (it) {
             for await (const atom of it) {
-                console.log(util.inspect(atom, false, Infinity));
+                console.log(util.inspect(atom, false, Infinity, true));
 
                 yield atom;
             }
