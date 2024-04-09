@@ -4,6 +4,7 @@ import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown } from "..
 import { handler, type MaybePromise } from "../handler";
 import { StreamConsumption } from "./consumption";
 import { Readable, Writable } from "stream";
+import util from "node:util";
 
 export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     /**
@@ -79,6 +80,42 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                 } else {
                     yield atom;
                 }
+            }
+        });
+    }
+
+    /**
+     * Run a callback for each value in the stream, ideal for side effects on stream items.
+     *
+     * @group Transform
+     */
+    tap(cb: (value: T) => unknown): Stream<T, E> {
+        this.trace("tap");
+
+        return this.map((value) => {
+            try {
+                cb(value);
+            } catch (e) {
+                console.error("Error thrown in tap operation:", e);
+            }
+
+            return value;
+        });
+    }
+
+    /**
+     * Inspect every atom that is emitted through the stream.
+     *
+     * @group Transform
+     */
+    inspect(): Stream<T, E> {
+        this.trace("inspect");
+
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                console.log(util.inspect(atom, false, Infinity));
+
+                yield atom;
             }
         });
     }
