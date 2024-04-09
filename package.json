@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "lint": "tsc",
-    "build": "tsup ./src --format esm,cjs,iife --dts",
+    "build": "tsup ./src/index.ts --format esm,cjs --dts",
     "start": "node dist/index.js",
     "dev:tsc": "tsc --watch --preserveWatchOutput",
     "dev:node": "node --watch dist/index.js",
