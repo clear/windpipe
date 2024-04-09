@@ -172,63 +172,45 @@ export class StreamBase {
      * Node stream will be emitted on the returned stream.
      */
     static writable<T, E>(): { stream: Stream<T, E>, writable: Writable } {
-        type Semaphore<T> = Promise<T> & { resolve: (value: T) => void };
-        function semaphore<T>(): Semaphore<T> {
-            let resolve: (value: T) => void;
+        const buffer: (Atom<T, E> | StreamEnd)[] = [];
+        const queue: ((value: Atom<T, E> | StreamEnd) => void)[] = [];
 
-            const promise: Partial<Semaphore<T>> = new Promise((done) => {
-                resolve = done;
-            });
-
-            promise.resolve = (value) => resolve(value);
-
-            return promise as Semaphore<T>;
+        function enqueue(value: Atom<T, E> | StreamEnd) {
+            if (queue.length > 0) {
+                queue.shift()?.(value);
+            } else {
+                buffer.push(value);
+            }
         }
 
-        let nextValue = semaphore<Atom<T, E> | StreamEnd>();
-        let valueRead = semaphore<void>();
+        function dequeue(): Promise<Atom<T, E> | StreamEnd> {
+            return new Promise((resolve) => {
+                if (buffer.length > 0) {
+                    resolve(buffer.shift() as Atom<T, E> | StreamEnd);
+                } else {
+                    queue.push(resolve);
+                }
+            });
+        }
 
         // The writable stream that will receive the transformed value.
         const writable = new Writable({
             objectMode: true,
             async write(value, _encoding, callback) {
-                // Emit the next value
-                nextValue.resolve(value);
-
-                // Wait for the value to be emitted before allowing further writes
-                await valueRead;
+                enqueue(value);
 
                 callback();
             },
             async final(callback) {
                 // Emit a `StreamEnd` to close the stream
-                nextValue.resolve(StreamEnd);
-
-                // Wait for the read before continuing to close stream
-                await valueRead;
+                enqueue(StreamEnd);
 
                 callback();
             }
         });
 
         return {
-            stream: Stream.fromNext(async () => {
-                // Get the next value
-                const value = await nextValue;
-
-                // Copy semaphore for marking a value as successfully read
-                const oldValueRead = valueRead;
-
-                // Reset semaphores for the next usage
-                nextValue = semaphore();
-                valueRead = semaphore();
-
-                // Mark semaphore for successful read
-                oldValueRead.resolve();
-
-                // Emit the actual value
-                return value;
-            }),
+            stream: Stream.fromNext(dequeue),
             writable,
         };
     }

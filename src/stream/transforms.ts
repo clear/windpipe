@@ -3,6 +3,7 @@ import { Stream } from ".";
 import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown } from "../atom";
 import { handler, type MaybePromise } from "../handler";
 import { StreamConsumption } from "./consumption";
+import { Readable, Writable } from "stream";
 
 export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     /**
@@ -13,14 +14,8 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     consume<U, F>(generator: (it: AsyncIterable<Atom<T, E>>) => AsyncGenerator<Atom<U, F>>): Stream<U, F> {
         const trace = this.trace("consume");
 
-        const { stream, writable } = Stream.writable<U, F>();
-        stream.stackTrace = trace;
-
-        pipeline(
-            this.stream,
-            generator,
-            writable,
-        );
+        const stream = new Stream<U, F>(Readable.from(generator(this.stream)));
+        stream.stackTrace = trace
 
         return stream;
     }
@@ -36,10 +31,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isOk(atom)) {
-                    yield await handler(
-                        () => cb(atom.value),
-                        trace,
-                    );
+                    yield await handler(() => cb(atom.value), trace);
                 } else {
                     yield atom;
                 }
