@@ -16,21 +16,30 @@ export class StreamConsumption<T, E> extends StreamBase {
      *
      * @group Consumption
      */
-    values(): AsyncIterator<T> {
+    values(): AsyncIterableIterator<T> {
         const it = this[Symbol.asyncIterator]();
 
-        return {
-             async next() {
-                const { value, done } = await it.next();
+        async function next() {
+            const { value, done } = await it.next();
 
-                if (done) {
-                    return { value, done: true };
-                } else if (isOk(value)) {
-                    return { value: value.value };
-                } else {
-                    return await this.next();
-                }
+            if (done) {
+                return { value, done: true };
+            } else if (isOk(value)) {
+                return { value: value.value };
+            } else {
+                return await next();
             }
+        }
+
+        return {
+            [Symbol.asyncIterator](): AsyncIterableIterator<T> {
+                // WARN: This feels weird, however it follows what the types require
+                return {
+                    [Symbol.asyncIterator]: this[Symbol.asyncIterator],
+                    next,
+                }
+            },
+            next,
         }
     }
 
