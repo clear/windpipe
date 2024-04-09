@@ -167,6 +167,18 @@ export class StreamBase {
         }));
     }
 
+    static of<T, E>(value: MaybeAtom<T, E>): Stream<T, E> {
+        let consumed = false;
+        return Stream.fromNext(async () => {
+            if (!consumed) {
+                consumed = true;
+                return value;
+            } else {
+                return StreamEnd;
+            }
+        });
+    }
+
     /**
      * Create a stream and corresponding writable Node stream, where any writes to the writable
      * Node stream will be emitted on the returned stream.
