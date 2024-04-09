@@ -53,14 +53,14 @@ export class StreamBase {
             return StreamBase.fromPromise(value);
         }
 
-        if ("next" in value && typeof value.next === "function") {
-            // Likely an iterator
-            return StreamBase.fromIterator(value);
-        }
-
         if (Symbol.iterator in value || Symbol.asyncIterator in value) {
             // Likely an iterable
             return StreamBase.fromIterable(value);
+        }
+
+        if ("next" in value && typeof value.next === "function") {
+            // Likely an iterator
+            return StreamBase.fromIterator(value);
         }
 
         if (typeof value === "function") {
