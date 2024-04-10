@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { isOk, type Atom } from "../atom";
 import { StreamBase } from "./base";
 
@@ -64,5 +65,61 @@ export class StreamConsumption<T, E> extends StreamBase {
         }
 
         return array;
+    }
+
+    /**
+     * Serialise the stream, and produce a Node stream with the serialised result.
+     *
+     * @param options.single - Whether to emit an array for multiple items, or only a single item.
+     * @param options.atoms - By default, only `ok` values are serialised, however enabling this
+     * will serialise all values.
+     *
+     * @group Consumption
+     */
+    serialise(options?: { single: boolean, atoms: boolean }): Readable {
+        // Set up a new readable stream that does nothing
+        const s = new Readable({
+            read() { },
+        });
+
+        // Spin off asynchronously so that the stream can be immediately returned
+        (async () => {
+            let sentItems = 0;
+
+            if (options?.single !== true) {
+                s.push("[");
+            }
+
+            for await (const atom of this) {
+                // Determine whether non-ok values should be filtered out
+                if (options?.atoms !== true && !isOk(atom)) {
+                    continue;
+                }
+
+                if (sentItems > 0) {
+                    if (options?.single) {
+                        // Monitor for multiple values being sent when only one is desired
+                        console.warn("indicated that stream would serialise to a single value, however multiple were emitted (ignoring)");
+                        break;
+                    } else {
+                        // Comma seperate multiple values
+                        s.push(",");
+                    }
+                }
+
+                s.push(JSON.stringify(options?.atoms ? atom : atom.value));
+
+                sentItems += 1;
+            }
+
+            if (options?.single !== true) {
+                s.push("]");
+            }
+
+            // End the stream
+            s.push(null);
+        })();
+
+        return s;
     }
 }
