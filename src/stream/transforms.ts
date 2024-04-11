@@ -126,7 +126,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
      *
      * @group Transform
      */
-    filter(condition: (value: T) => MaybePromise<boolean>): Stream<T, E> {
+    filter(condition: (value: T) => MaybePromise<any>): Stream<T, E> {
         const trace = this.trace("filter");
 
         return this.consume(async function* (it) {
