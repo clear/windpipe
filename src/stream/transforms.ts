@@ -5,6 +5,8 @@ import { StreamConsumption } from "./consumption";
 import { Readable } from "stream";
 import util from "node:util";
 
+type Truthy<T> = NonNullable<Exclude<T, false | "">>;
+
 export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     /**
      * Consume the stream atoms, emitting new atoms from the generator.
@@ -152,6 +154,25 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                 }
             }
         });
+    }
+
+    /**
+     * Remove falsey values from the stream.
+     *
+     * This is equivalent to doing `.filter((value) => value)`.
+     *
+     * @group Transform
+     */
+    compact(): Stream<Truthy<T>, E> {
+        this.trace("compact");
+
+        return this.filter((value) => {
+            if (value) {
+                return true;
+            } else {
+                return false;
+            }
+        }) as Stream<Truthy<T>, E>;
     }
 
     /**
