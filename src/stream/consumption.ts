@@ -76,7 +76,7 @@ export class StreamConsumption<T, E> extends StreamBase {
      *
      * @group Consumption
      */
-    serialise(options?: { single: boolean, atoms: boolean }): Readable {
+    serialise(options?: { single?: boolean, atoms?: boolean }): Readable {
         // Set up a new readable stream that does nothing
         const s = new Readable({
             read() { },

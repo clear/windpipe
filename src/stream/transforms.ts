@@ -1,9 +1,8 @@
-import { pipeline } from "stream/promises";
 import { Stream } from ".";
 import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown } from "../atom";
 import { handler, type MaybePromise } from "../handler";
 import { StreamConsumption } from "./consumption";
-import { Readable, Writable } from "stream";
+import { Readable } from "stream";
 import util from "node:util";
 
 export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
@@ -151,6 +150,34 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                     error.detail = filter;
                     yield unknown(error, trace);
                 }
+            }
+        });
+    }
+
+    /**
+     * Return a stream containing the first `n` values. If `options.atoms` is `true`, then the
+     * first `n` atoms rather than values will be emitted.
+     *
+     * @param options.atoms - If enabled, first `n` atoms will be counted, otherwise values.
+     *
+     * @group Transform
+     */
+    take(n: number, options?: { atoms?: boolean }): Stream<T, E> {
+        this.trace("take");
+
+        return this.consume(async function* (it) {
+            let i = 0;
+
+            for await (const atom of it) {
+                if (i >= n) {
+                    break;
+                }
+
+                if (isOk(atom) || options?.atoms === true) {
+                    yield atom;
+                }
+
+                i++;
             }
         });
     }
