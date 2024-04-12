@@ -232,4 +232,21 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
             }
         });
     }
+
+    /**
+     * Delay emitting each value on the stream by `ms`.
+     *
+     * @group Transform
+     */
+    delay(ms: number): Stream<T, E> {
+        this.trace("delay");
+
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                await new Promise((resolve) => setTimeout(resolve, ms));
+
+                yield atom;
+            }
+        });
+    }
 }
