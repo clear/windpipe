@@ -5,6 +5,11 @@ import { StreamTransforms } from "./transforms";
 
 type FlatMapResult<T, E> = { atom: Atom<T, E> } | { stream: Promise<Atom<Stream<T, E>, E>> };
 
+/**
+ * Type that may be a callback that resolves to a stream, or just a stream.
+ */
+type CallbackOrStream<T, E> =  (() => Stream<T, E>) | Stream<T, E>;
+
 export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     /**
      * Map over each value in the stream, produce a stream from it, and flatten all the value
@@ -99,7 +104,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
      *
      * @group Higher Order
      */
-    otherwise(cbOrStream: (() => Stream<T, E>) | Stream<T, E>): Stream<T, E> {
+    otherwise(cbOrStream: CallbackOrStream<T, E>): Stream<T, E> {
         return this.consume(async function* (it) {
             // Count the items being emitted from the iterator
             let count = 0;
@@ -115,6 +120,35 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
                 } else {
                     yield* cbOrStream;
                 }
+            }
+        });
+    }
+
+    /**
+     * Consume the entire stream, and completely replace it with a new stream. This will remove
+     * any errors currently on the stream (both known and unknown).
+     *
+     * Equivalent to:
+     *
+     * ```
+     * stream
+     *   .filter(() => false)
+     *   .otherwise(newStream);
+     * ```
+     * `
+     *
+     * @group Higher Order
+     */
+    replaceWith<U, F>(cbOrStream: CallbackOrStream<U, F>): Stream<U, F> {
+        return this.consume(async function* (it) {
+            // Consume all the items in the stream
+            for await (const _atom of it) { }
+
+            // Replace with the user stream
+            if (typeof cbOrStream === "function") {
+                yield* cbOrStream();
+            } else {
+                yield* cbOrStream;
             }
         });
     }
