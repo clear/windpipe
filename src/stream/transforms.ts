@@ -1,5 +1,5 @@
 import { Stream } from ".";
-import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown } from "../atom";
+import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown, ok } from "../atom";
 import { handler, type MaybePromise } from "../handler";
 import { StreamConsumption } from "./consumption";
 import { Readable } from "stream";
@@ -173,6 +173,36 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                 return false;
             }
         }) as Stream<Truthy<T>, E>;
+    }
+
+    /**
+     * Operate on each item in the stream, reducing it into a single value. The resulting value is
+     * returned in its own stream.
+     *
+     * @group Transforms
+     */
+    reduce<U>(cb: (memo: U, value: T) => MaybePromise<MaybeAtom<U, E>>, memo: U): Stream<U, E> {
+        const trace = this.trace("reduce");
+
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                if (isOk(atom)) {
+                    // Run the reducer
+                    const value = await handler(() => cb(memo, atom.value), trace);
+
+                    if (isOk(value)) {
+                        memo = value.value;
+                    } else {
+                        // Reducer produced a non-ok atom, emit it and continue reducing
+                        yield value;
+                    }
+                } else {
+                    yield atom as Atom<U, E>;
+                }
+            }
+
+            yield ok(memo);
+        });
     }
 
     /**
