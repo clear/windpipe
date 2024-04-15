@@ -7,7 +7,7 @@
     "lint": "tsc && eslint .",
     "format": "eslint --fix .",
     "build": "tsup ./src/index.ts --format esm,cjs --dts",
-    "doc": "typedoc ./src",
+    "doc": "typedoc ./src --media ./media --plugin typedoc-plugin-extras --favicon ./media/favicon.ico",
     "test": "vitest",
     "ci:release": "npm run build && changeset publish"
   },
@@ -47,6 +47,7 @@
     "prettier": "3.2.5",
     "tsup": "^8.0.1",
     "typedoc": "^0.25.7",
+    "typedoc-plugin-extras": "^3.0.0",
     "typescript": "^5.3.3",
     "typescript-eslint": "^7.6.0",
     "vitest": "^1.2.0"
