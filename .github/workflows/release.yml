@@ -50,6 +50,9 @@ jobs:
         with:
           node-version: 20.x
 
+      - name: Install Dependencies
+        run: npm ci
+
       - name: Build docs
         run: npm run doc
 
