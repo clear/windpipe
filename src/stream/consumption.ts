@@ -38,10 +38,10 @@ export class StreamConsumption<T, E> extends StreamBase {
                 return {
                     [Symbol.asyncIterator]: this[Symbol.asyncIterator],
                     next,
-                }
+                };
             },
             next,
-        }
+        };
     }
 
     /**
@@ -76,10 +76,10 @@ export class StreamConsumption<T, E> extends StreamBase {
      *
      * @group Consumption
      */
-    serialise(options?: { single?: boolean, atoms?: boolean }): Readable {
+    serialise(options?: { single?: boolean; atoms?: boolean }): Readable {
         // Set up a new readable stream that does nothing
         const s = new Readable({
-            read() { },
+            read() {},
         });
 
         // Spin off asynchronously so that the stream can be immediately returned
@@ -99,7 +99,9 @@ export class StreamConsumption<T, E> extends StreamBase {
                 if (sentItems > 0) {
                     if (options?.single) {
                         // Monitor for multiple values being sent when only one is desired
-                        console.warn("indicated that stream would serialise to a single value, however multiple were emitted (ignoring)");
+                        console.warn(
+                            "indicated that stream would serialise to a single value, however multiple were emitted (ignoring)",
+                        );
                         break;
                     } else {
                         // Comma seperate multiple values

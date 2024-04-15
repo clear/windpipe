@@ -42,7 +42,16 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static from<T, E>(value: Promise<MaybeAtom<T, E>> | Iterator<MaybeAtom<T, E>> | AsyncIterator<MaybeAtom<T, E>> | Iterable<MaybeAtom<T, E>> | AsyncIterable<MaybeAtom<T, E>> | Array<MaybeAtom<T, E>> | (() => Promise<MaybeAtom<T, E>>)): Stream<T, E> {
+    static from<T, E>(
+        value:
+            | Promise<MaybeAtom<T, E>>
+            | Iterator<MaybeAtom<T, E>>
+            | AsyncIterator<MaybeAtom<T, E>>
+            | Iterable<MaybeAtom<T, E>>
+            | AsyncIterable<MaybeAtom<T, E>>
+            | Array<MaybeAtom<T, E>>
+            | (() => Promise<MaybeAtom<T, E>>),
+    ): Stream<T, E> {
         if (Array.isArray(value)) {
             // Likely an array
             return StreamBase.fromArray(value);
@@ -100,12 +109,12 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static fromIterator<T, E>(iterator: Iterator<MaybeAtom<T, E>> | AsyncIterator<MaybeAtom<T, E>>): Stream<T, E> {
+    static fromIterator<T, E>(
+        iterator: Iterator<MaybeAtom<T, E>> | AsyncIterator<MaybeAtom<T, E>>,
+    ): Stream<T, E> {
         return Stream.fromNext(async () => {
             const result = iterator.next();
-            const { value, done } = result instanceof Promise
-                ? (await result)
-                : result;
+            const { value, done } = result instanceof Promise ? await result : result;
 
             if (done) {
                 return StreamEnd;
@@ -123,7 +132,9 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static fromIterable<T, E>(iterable: Iterable<MaybeAtom<T, E>> | AsyncIterable<MaybeAtom<T, E>>): Stream<T, E> {
+    static fromIterable<T, E>(
+        iterable: Iterable<MaybeAtom<T, E>> | AsyncIterable<MaybeAtom<T, E>>,
+    ): Stream<T, E> {
         if (Symbol.iterator in iterable) {
             return StreamBase.fromIterator(iterable[Symbol.iterator]());
         } else {
@@ -153,18 +164,20 @@ export class StreamBase {
      * @group Creation
      */
     static fromNext<T, E>(next: () => Promise<MaybeAtom<T, E> | StreamEnd>): Stream<T, E> {
-        return new Stream(new Readable({
-            objectMode: true,
-            async read() {
-                const value = await next();
+        return new Stream(
+            new Readable({
+                objectMode: true,
+                async read() {
+                    const value = await next();
 
-                if (value === StreamEnd) {
-                    this.push(null)
-                } else {
-                    this.push(normalise(value));
-                }
-            },
-        }));
+                    if (value === StreamEnd) {
+                        this.push(null);
+                    } else {
+                        this.push(normalise(value));
+                    }
+                },
+            }),
+        );
     }
 
     static of<T, E>(value: MaybeAtom<T, E>): Stream<T, E> {
@@ -183,7 +196,7 @@ export class StreamBase {
      * Create a stream and corresponding writable Node stream, where any writes to the writable
      * Node stream will be emitted on the returned stream.
      */
-    static writable<T, E>(): { stream: Stream<T, E>, writable: Writable } {
+    static writable<T, E>(): { stream: Stream<T, E>; writable: Writable } {
         const buffer: (Atom<T, E> | StreamEnd)[] = [];
         const queue: ((value: Atom<T, E> | StreamEnd) => void)[] = [];
 
@@ -218,7 +231,7 @@ export class StreamBase {
                 enqueue(StreamEnd);
 
                 callback();
-            }
+            },
         });
 
         return {

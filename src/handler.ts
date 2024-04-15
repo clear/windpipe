@@ -21,7 +21,10 @@ async function normalisePromise<T>(value: MaybePromise<T>): Promise<T> {
  * unhandled error is thrown during the handler, then it will be caught and returned as an `unknown`
  * atom.
  */
-export async function handler<T, E>(handler: () => MaybePromise<MaybeAtom<T, E>>, trace: string[]): Promise<Atom<T, E>> {
+export async function handler<T, E>(
+    handler: () => MaybePromise<MaybeAtom<T, E>>,
+    trace: string[],
+): Promise<Atom<T, E>> {
     try {
         // Run the handler
         const rawResult = handler();

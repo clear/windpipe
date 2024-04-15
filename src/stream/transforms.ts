@@ -13,11 +13,13 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
      *
      * @group Transform
      */
-    consume<U, F>(generator: (it: AsyncIterable<Atom<T, E>>) => AsyncGenerator<Atom<U, F>>): Stream<U, F> {
+    consume<U, F>(
+        generator: (it: AsyncIterable<Atom<T, E>>) => AsyncGenerator<Atom<U, F>>,
+    ): Stream<U, F> {
         const trace = this.trace("consume");
 
         const stream = new Stream<U, F>(Readable.from(generator(this.stream)));
-        stream.stackTrace = trace
+        stream.stackTrace = trace;
 
         return stream;
     }
@@ -52,10 +54,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isError(atom)) {
-                    yield await handler(
-                        () => cb(atom.value),
-                        trace,
-                    );
+                    yield await handler(() => cb(atom.value), trace);
                 } else {
                     yield atom;
                 }
@@ -74,10 +73,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
         return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isUnknown(atom)) {
-                    yield await handler(
-                        () => cb(atom.value),
-                        trace,
-                    );
+                    yield await handler(() => cb(atom.value), trace);
                 } else {
                     yield atom;
                 }
@@ -126,7 +122,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
      *
      * @group Transform
      */
-    filter(condition: (value: T) => MaybePromise<any>): Stream<T, E> {
+    filter(condition: (value: T) => MaybePromise<unknown>): Stream<T, E> {
         const trace = this.trace("filter");
 
         return this.consume(async function* (it) {
@@ -137,17 +133,14 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                 }
 
                 // Run the filter condition
-                const filter = await handler(
-                    () => condition(atom.value as T),
-                    trace,
-                );
+                const filter = await handler(() => condition(atom.value as T), trace);
 
                 if (isOk(filter) && filter.value) {
                     yield atom;
                 } else if (!isOk(filter)) {
                     // Non-value returned from the filter
-                    const error: Error & { detail?: any } = new Error(
-                        "non-ok value returned from filter condition"
+                    const error: Error & { detail?: unknown } = new Error(
+                        "non-ok value returned from filter condition",
                     );
                     error.detail = filter;
                     yield unknown(error, trace);

@@ -8,7 +8,7 @@ type FlatMapResult<T, E> = { atom: Atom<T, E> } | { stream: Promise<Atom<Stream<
 /**
  * Type that may be a callback that resolves to a stream, or just a stream.
  */
-type CallbackOrStream<T, E> =  (() => Stream<T, E>) | Stream<T, E>;
+type CallbackOrStream<T, E> = (() => Stream<T, E>) | Stream<T, E>;
 
 export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     /**
@@ -53,7 +53,9 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
      *
      * @group Higher Order
      */
-    flatMapUnknown(cb: (value: unknown, trace: string[]) => MaybePromise<MaybeAtom<Stream<T, E>, E>>): Stream<T, E> {
+    flatMapUnknown(
+        cb: (value: unknown, trace: string[]) => MaybePromise<MaybeAtom<Stream<T, E>, E>>,
+    ): Stream<T, E> {
         const trace = this.trace("flatMapUnknown");
 
         return this.flatMapAtom((atom) => {
@@ -142,7 +144,9 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     replaceWith<U, F>(cbOrStream: CallbackOrStream<U, F>): Stream<U, F> {
         return this.consume(async function* (it) {
             // Consume all the items in the stream
-            for await (const _atom of it) { }
+            for await (const _atom of it) {
+                // eslint-disable-next-line no-empty
+            }
 
             // Replace with the user stream
             if (typeof cbOrStream === "function") {

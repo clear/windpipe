@@ -1,13 +1,11 @@
-import { describe, bench, } from "vitest";
+import { describe, bench } from "vitest";
 import { Stream } from "../../src";
 import Highland from "highland";
 import { StreamEnd } from "../../src/stream/base";
 import { error, ok } from "../../src/atom";
 
 const SAMPLE_SIZE = 10;
-const ARRAY = new Array(SAMPLE_SIZE)
-    .fill(undefined)
-    .map((_, i) => i);
+const ARRAY = new Array(SAMPLE_SIZE).fill(undefined).map((_, i) => i);
 
 describe("stream creation from next function", () => {
     bench("windpipe", async () => {
@@ -18,8 +16,7 @@ describe("stream creation from next function", () => {
             } else {
                 return StreamEnd;
             }
-        })
-            .toArray();
+        }).toArray();
     });
 
     bench("highland", () => {
@@ -33,8 +30,7 @@ describe("stream creation from next function", () => {
                 } else {
                     push(null, Highland.nil);
                 }
-            })
-                .toArray(() => resolve());
+            }).toArray(() => resolve());
         });
     });
 });
@@ -118,7 +114,7 @@ describe("sample data operations", () => {
                 return {
                     id: person.id,
                     balance: person.balance,
-                }
+                };
             })
             .map(({ id, balance }) => `#${id}: $${balance}.00`)
             .toArray();
@@ -187,7 +183,7 @@ describe("sample data operations", () => {
                     return {
                         id: person.id,
                         balance: person.balance,
-                    }
+                    };
                 })
                 .map(({ id, balance }) => `#${id}: $${balance}.00`)
                 .errors(() => {})
