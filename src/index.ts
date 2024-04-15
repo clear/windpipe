@@ -4,6 +4,7 @@ import { ok, error, unknown, isOk, isError, isUnknown } from "./atom";
 export * from "./util";
 
 export { Stream, type StreamEnd } from "./stream";
+export type { Atom, AtomOk, AtomError, AtomUnknown } from "./atom";
 
 // Attempt to emulate Highland API
 type HighlandConstructor = (typeof StreamBase)["from"] & {

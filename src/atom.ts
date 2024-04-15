@@ -3,10 +3,10 @@ export const ERROR = Symbol.for("ERROR");
 export const UNKNOWN = Symbol.for("UNKNOWN");
 
 export type AtomOk<T> = { type: typeof VALUE; value: T };
-export type AtomErr<E> = { type: typeof ERROR; value: E };
+export type AtomError<E> = { type: typeof ERROR; value: E };
 export type AtomUnknown = { type: typeof UNKNOWN; value: unknown; trace: Array<string> };
 
-export type Atom<T, E> = AtomOk<T> | AtomErr<E> | AtomUnknown;
+export type Atom<T, E> = AtomOk<T> | AtomError<E> | AtomUnknown;
 export type MaybeAtom<T, E> = T | Atom<T, E>;
 
 export const ok = <T, E>(value: T): Atom<T, E> => ({ type: VALUE, value });
@@ -18,7 +18,7 @@ export const unknown = <T, E>(error: unknown, trace: Array<string>): Atom<T, E> 
 });
 
 export const isOk = <T, E>(atom: Atom<T, E>): atom is AtomOk<T> => atom.type === VALUE;
-export const isError = <T, E>(atom: Atom<T, E>): atom is AtomErr<E> => atom.type === ERROR;
+export const isError = <T, E>(atom: Atom<T, E>): atom is AtomError<E> => atom.type === ERROR;
 export const isUnknown = <T, E>(atom: Atom<T, E>): atom is AtomUnknown => atom.type === UNKNOWN;
 
 /**
