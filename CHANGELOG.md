@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.3.1
+
+### Patch Changes
+
+- edd7aad: add Atom types to export
+
 ## 0.3.0
 
 ### Minor Changes
