@@ -7,7 +7,7 @@
     "lint": "tsc && eslint .",
     "format": "eslint --fix .",
     "build": "tsup ./src/index.ts --format esm,cjs --dts",
-    "doc": "typedoc ./src --media ./media --plugin typedoc-plugin-extras --favicon ./media/favicon.ico",
+    "doc": "typedoc ./src --media ./media --plugin typedoc-plugin-extras --favicon ./media/favicon.ico --footerLastModified true --plugin typedoc-material-theme --themeColor '#03284e'",
     "test": "vitest",
     "ci:release": "npm run build && changeset publish"
   },
@@ -47,6 +47,7 @@
     "prettier": "3.2.5",
     "tsup": "^8.0.1",
     "typedoc": "^0.25.7",
+    "typedoc-material-theme": "^1.0.2",
     "typedoc-plugin-extras": "^3.0.0",
     "typescript": "^5.3.3",
     "typescript-eslint": "^7.6.0",
