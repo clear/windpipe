@@ -9,7 +9,7 @@
     "build": "tsup ./src/index.ts --format esm,cjs --dts",
     "doc": "typedoc ./src",
     "test": "vitest",
-    "ci:release": "changeset publish"
+    "ci:release": "npm run build && changeset publish"
   },
   "keywords": [],
   "files": [
