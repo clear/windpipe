@@ -227,6 +227,33 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     }
 
     /**
+     * Drop the first `n` items from the stream.
+     *
+     * @group Transform
+     */
+    drop(n: number, options?: { atoms?: boolean }): Stream<T, E> {
+        this.trace("drop");
+
+        return this.consume(async function* (it) {
+            let i = 0;
+
+            for await (const atom of it) {
+                // Skip this atom if only values are desired
+                if (!options?.atoms && !isOk(atom)) {
+                    continue;
+                }
+
+                // Only yield if we're beyond the first n items
+                if (i >= n) {
+                    yield atom;
+                }
+
+                i++;
+            }
+        });
+    }
+
+    /**
      * Delay emitting each value on the stream by `ms`.
      *
      * @group Transform
