@@ -6,13 +6,9 @@
   "scripts": {
     "lint": "tsc",
     "build": "tsup ./src/index.ts --format esm,cjs --dts",
-    "start": "node dist/index.js",
-    "dev:tsc": "tsc --watch --preserveWatchOutput",
-    "dev:node": "node --watch dist/index.js",
-    "dev:esbuild": "npm run build -- --watch",
-    "dev": "run-p dev:*",
     "doc": "typedoc ./src",
-    "test": "vitest"
+    "test": "vitest",
+    "ci:release": "changeset publish"
   },
   "keywords": [],
   "files": [
@@ -37,6 +33,7 @@
   },
   "license": "ISC",
   "devDependencies": {
+    "@changesets/cli": "^2.27.1",
     "@types/highland": "^2.13.0",
     "@types/node": "^20.10.7",
     "highland": "^2.13.5",
