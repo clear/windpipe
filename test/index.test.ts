@@ -174,7 +174,7 @@ describe.concurrent("stream transforms", () => {
 
             const s = Stream.from([1, 2, 3, 4, 5]).drop(2);
 
-            expect(await s.toArray()).toEqual([3, 4, 5]);
+            expect(await s.toArray({ atoms: true })).toEqual([ok(3), ok(4), ok(5)]);
         });
 
         test("multiple values with errors", async ({ expect }) => {
@@ -182,13 +182,13 @@ describe.concurrent("stream transforms", () => {
 
             const s = Stream.from([1, error("some error"), 2, 3, 4, 5]).drop(2);
 
-            expect(await s.toArray()).toEqual([3, 4, 5]);
+            expect(await s.toArray({ atoms: true })).toEqual([ok(3), ok(4), ok(5)]);
         });
 
         test("multiple atoms", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = Stream.from([1, 2, 3, 4, 5]).drop(2);
+            const s = Stream.from([1, 2, 3, 4, 5]).drop(2, { atoms: true });
 
             expect(await s.toArray({ atoms: true })).toEqual([ok(3), ok(4), ok(5)]);
         });
@@ -196,7 +196,7 @@ describe.concurrent("stream transforms", () => {
         test("multiple atoms with errors", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = Stream.from([1, error("some error"), 2, 3, 4, 5]).drop(2);
+            const s = Stream.from([1, error("some error"), 2, 3, 4, 5]).drop(2, { atoms: true });
 
             expect(await s.toArray({ atoms: true })).toEqual([ok(2), ok(3), ok(4), ok(5)]);
         });
