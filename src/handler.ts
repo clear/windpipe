@@ -1,7 +1,6 @@
 import type { Atom, MaybeAtom } from "./atom";
 import * as atom from "./atom";
-
-export type MaybePromise<T> = Promise<T> | T;
+import type { MaybePromise } from "./util";
 
 /**
  * Given some value, will either await it if it's a promise, or return the value un-modified. This

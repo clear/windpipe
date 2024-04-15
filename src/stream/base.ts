@@ -6,6 +6,10 @@ import { Readable, Writable } from "stream";
  * Marker for the end of a stream.
  */
 export const StreamEnd = Symbol.for("STREAM_END");
+
+/**
+ * Unique type to represent the stream end marker.
+ */
 export type StreamEnd = typeof StreamEnd;
 
 export class StreamBase {

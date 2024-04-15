@@ -1,11 +1,10 @@
 import { Stream } from ".";
 import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown, ok } from "../atom";
-import { handler, type MaybePromise } from "../handler";
+import { handler } from "../handler";
 import { StreamConsumption } from "./consumption";
 import { Readable } from "stream";
 import util from "node:util";
-
-type Truthy<T> = NonNullable<Exclude<T, false | "">>;
+import type { Truthy, MaybePromise } from "../util";
 
 export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     /**

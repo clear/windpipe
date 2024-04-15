@@ -1,14 +1,10 @@
 import type { Stream } from ".";
 import { isError, isOk, type Atom, type MaybeAtom, isUnknown } from "../atom";
-import { handler, type MaybePromise } from "../handler";
+import { handler } from "../handler";
+import type { CallbackOrStream, MaybePromise } from "../util";
 import { StreamTransforms } from "./transforms";
 
 type FlatMapResult<T, E> = { atom: Atom<T, E> } | { stream: Promise<Atom<Stream<T, E>, E>> };
-
-/**
- * Type that may be a callback that resolves to a stream, or just a stream.
- */
-type CallbackOrStream<T, E> = (() => Stream<T, E>) | Stream<T, E>;
 
 export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     /**

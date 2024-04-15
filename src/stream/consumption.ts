@@ -47,17 +47,17 @@ export class StreamConsumption<T, E> extends StreamBase {
     /**
      * Iterate through each atom in the stream, and return them as a single array.
      *
-     * @param options.atom - Return every atom on the stream.
+     * @param options.atoms - Return every atom on the stream.
      *
      * @group Consumption
      */
     async toArray(options?: { atoms: false }): Promise<T[]>;
     async toArray(options?: { atoms: true }): Promise<Atom<T, E>[]>;
-    async toArray({ atoms = false }: { atoms?: boolean } = {}): Promise<(Atom<T, E> | T)[]> {
+    async toArray(options?: { atoms?: boolean }): Promise<(Atom<T, E> | T)[]> {
         const array: (Atom<T, E> | T)[] = [];
 
         for await (const atom of this) {
-            if (atoms) {
+            if (options?.atoms) {
                 array.push(atom);
             } else if (isOk(atom)) {
                 array.push(atom.value);
