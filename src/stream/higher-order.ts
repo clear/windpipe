@@ -95,6 +95,39 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     }
 
     /**
+     * Produce a stream for each value in the stream. The resulting stream will be emptied,
+     * however the resulting values will just be dropped. This is analogous to an asynchronous
+     * side effect.
+     *
+     * @group Higher Order
+     */
+    flatTap(cb: (value: T) => MaybePromise<MaybeAtom<Stream<T, E>, E>>): Stream<T, E> {
+        const trace = this.trace("flatTap");
+
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                if (!isOk(atom)) {
+                    yield atom;
+                    continue;
+                }
+
+                const streamAtom = await handler(() => cb(atom.value), trace);
+
+                if (isOk(streamAtom)) {
+                    // Consume the resulting stream, and emit the original atom
+                    for await (const _ of streamAtom.value) {
+                        // eslint-ignore no-empty
+                    }
+
+                    yield atom;
+                } else {
+                    yield streamAtom;
+                }
+            }
+        });
+    }
+
+    /**
      * Emit items from provided stream if this stream is completely empty.
      *
      * @note If there are any errors (known or unknown) on the stream, then the new stream won't be
