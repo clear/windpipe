@@ -1,0 +1,5 @@
+---
+"windpipe": minor
+---
+
+add `flatTap`
