@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.5.0
+
+### Minor Changes
+
+- 27191f4: fix default exports for cjs
+
 ## 0.4.0
 
 ### Minor Changes
