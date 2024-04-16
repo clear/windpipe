@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.5.1
+
+### Patch Changes
+
+- 56147df: fix incorrect stream type for `flatTap`
+
 ## 0.5.0
 
 ### Minor Changes
