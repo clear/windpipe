@@ -1,5 +1,5 @@
 import { describe, bench } from "vitest";
-import { Stream } from "../../src";
+import Stream from "../../src";
 import Highland from "highland";
 import { StreamEnd } from "../../src/stream/base";
 import { error, ok } from "../../src/atom";
