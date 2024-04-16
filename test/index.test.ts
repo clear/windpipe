@@ -355,6 +355,35 @@ describe.concurrent("higher order streams", () => {
         });
     });
 
+    describe.concurrent("flat tap", () => {
+        test("simple stream", async ({ expect }) => {
+            expect.assertions(3);
+
+            const subCallback = vi.fn();
+            const callback = vi.fn().mockImplementation((n) => Stream.of(n * n).tap(subCallback));
+            const s = Stream.from([1, 2, 3, 4]).flatTap(callback);
+
+            // Ensure that the flat tap doesn't alter the emitted stream items
+            expect(await s.toArray({ atoms: true })).toEqual([ok(1), ok(2), ok(3), ok(4)]);
+
+            // Ensure that the flatTap implementation is called once for each item in the stream
+            expect(callback).toBeCalledTimes(4);
+
+            // Ensure that the stream returned from flatTap is fully executed
+            expect(subCallback).toBeCalledTimes(4);
+        });
+
+        test("simple stream", async ({ expect }) => {
+            expect.assertions(2);
+
+            const callback = vi.fn().mockImplementation((n) => Stream.of(n * n));
+            const s = Stream.from([1, 2, 3, 4]).flatTap(callback);
+
+            expect(await s.toArray({ atoms: true })).toEqual([ok(1), ok(2), ok(3), ok(4)]);
+            expect(callback).toBeCalledTimes(4);
+        });
+    });
+
     describe.concurrent("otherwise", () => {
         test("empty stream", async ({ expect }) => {
             expect.assertions(1);
