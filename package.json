@@ -6,7 +6,7 @@
   "scripts": {
     "lint": "tsc && eslint .",
     "format": "eslint --fix .",
-    "build": "tsup ./src/index.ts --format esm,cjs --dts",
+    "build": "tsup ./src/index.ts --format esm,cjs --dts --splitting --cjsInterop",
     "doc": "typedoc ./src --media ./media --plugin typedoc-plugin-extras --favicon ./media/favicon.ico --footerLastModified true --plugin typedoc-material-theme --themeColor '#03284e'",
     "test": "vitest",
     "ci:release": "npm run build && changeset publish"
