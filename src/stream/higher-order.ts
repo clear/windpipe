@@ -101,7 +101,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
      *
      * @group Higher Order
      */
-    flatTap(cb: (value: T) => MaybePromise<MaybeAtom<Stream<T, E>, E>>): Stream<T, E> {
+    flatTap(cb: (value: T) => MaybePromise<MaybeAtom<Stream<unknown, unknown>, E>>): Stream<T, E> {
         const trace = this.trace("flatTap");
 
         return this.consume(async function* (it) {
