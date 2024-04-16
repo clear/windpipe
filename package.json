@@ -6,21 +6,28 @@
   "scripts": {
     "lint": "tsc && eslint .",
     "format": "eslint --fix .",
-    "build": "tsup ./src/index.ts --format esm,cjs --dts --splitting --cjsInterop",
+    "build": "tsup ./src/index.ts",
     "doc": "typedoc ./src --media ./media --plugin typedoc-plugin-extras --favicon ./media/favicon.ico --footerLastModified true --plugin typedoc-material-theme --themeColor '#03284e'",
     "test": "vitest",
     "ci:release": "npm run build && changeset publish"
   },
   "keywords": [],
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/index.cjs",
+  "types": "./dist/index.d.cts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": {
+        "default": "./dist/index.js",
+        "types": "./dist/index.d.ts"
+      },
+      "require": {
+        "default": "./dist/index.cjs",
+        "types": "./dist/index.d.cts"
+      }
     }
   },
   "author": {
@@ -55,5 +62,14 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "tsup": {
+    "format": [
+      "esm",
+      "cjs"
+    ],
+    "dts": {
+      "footer": "export = Stream"
+    }
   }
 }
