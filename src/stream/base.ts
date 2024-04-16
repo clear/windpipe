@@ -1,4 +1,4 @@
-import { normalise, type Atom, type MaybeAtom } from "../atom";
+import { normalise, type Atom, type MaybeAtom, error, unknown } from "../atom";
 import { Stream } from ".";
 import { Readable, Writable } from "stream";
 
@@ -184,6 +184,12 @@ export class StreamBase {
         );
     }
 
+    /**
+     * Create a new stream containing a single value. Unless an atom is provided, it will be
+     * converted to an `ok` atom.
+     *
+     * @group Creation
+     */
     static of<T, E>(value: MaybeAtom<T, E>): Stream<T, E> {
         let consumed = false;
         return Stream.fromNext(async () => {
@@ -194,6 +200,24 @@ export class StreamBase {
                 return StreamEnd;
             }
         });
+    }
+
+    /**
+     * Create a new stream containing a single error atom.
+     *
+     * @group Creation
+     */
+    static ofError<T, E>(value: E): Stream<T, E> {
+        return this.of(error(value));
+    }
+
+    /**
+     * Create a new stream containing a single unknown atom.
+     *
+     * @group Creation
+     */
+    static ofUnknown<T, E>(value: unknown): Stream<T, E> {
+        return this.of(unknown(value, []));
     }
 
     /**
