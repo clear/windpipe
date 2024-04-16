@@ -1,5 +1,13 @@
 # windpipe
 
+## 0.4.0
+
+### Minor Changes
+
+- e55d490: create new `ofError` and `ofUnknown` static methods for creating a stream
+- e55d490: alter exported API
+- 341ef76: add `flatTap`
+
 ## 0.3.1
 
 ### Patch Changes
