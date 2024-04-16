@@ -1,6 +1,6 @@
 {
   "name": "windpipe",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "Highland but better",
   "type": "module",
   "scripts": {
