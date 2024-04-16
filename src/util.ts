@@ -1,4 +1,4 @@
-import type { Stream } from ".";
+import Stream from ".";
 
 /**
  * Maybe it's a promise. Maybe it's not. Who's to say.
