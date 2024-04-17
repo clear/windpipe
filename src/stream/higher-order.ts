@@ -1,28 +1,92 @@
 import type { Stream } from ".";
-import { isError, isOk, type Atom, type MaybeAtom, isUnknown } from "../atom";
-import { handler } from "../handler";
-import type { CallbackOrStream, MaybePromise } from "../util";
+import { isError, isOk, type Atom, isUnknown } from "../atom";
+import { run } from "../handler";
+import { type CallbackOrStream, type MaybePromise, exhaust } from "../util";
 import { StreamTransforms } from "./transforms";
 
-type FlatMapResult<T, E> = { atom: Atom<T, E> } | { stream: Promise<Atom<Stream<T, E>, E>> };
+function accept<T>(value: T): { accept: T } {
+    return { accept: value };
+}
+
+function reject<T>(value: T): { reject: T } {
+    return { reject: value };
+}
+
+type FilterResult<A, R> = { accept: A } | { reject: R };
 
 export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
+    /**
+     * Base implementation of `flat*` operations. In general, all of these methods will filter over
+     * the type of atom, run some stream-producing callback with it, and then produce a new
+     * generator to expand into the stream.
+     *
+     * @template A - The accepted type from the filter. Allows for type narrowing from `Atom<T, E>`
+     * into `AtomOk<T>`, etc.
+     * @template U - The `ok` type of the produced stream.
+     * @template F - The `error` type of the produced stream.
+     * @template CT - The `ok` type of the stream produced from the callback.
+     * @template CE - The `error` type of the stream produced from the callback.
+     */
+    private flatOp<A, U, F, CT, CE>(
+        filter: (atom: Atom<T, E>) => FilterResult<A, Atom<U, F>>,
+        cb: (atom: A) => MaybePromise<Stream<CT, CE>>,
+        process: (atom: Atom<T, E>, stream: Stream<CT, CE>) => AsyncGenerator<Atom<U, F>>,
+    ): Stream<U, F> {
+        const trace = this.trace("flatOp");
+
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                const result = filter(atom);
+
+                if ("reject" in result) {
+                    yield result.reject;
+                    continue;
+                }
+
+                // Run the flat map handler
+                const streamAtom = await run(() => cb(result.accept), trace);
+
+                // If an error was emitted whilst initialising the new stream, return it
+                if (!isOk(streamAtom)) {
+                    yield streamAtom;
+                    continue;
+                }
+
+                // Otherwise, consume the iterator
+                yield* process(atom, streamAtom.value);
+            }
+        });
+    }
+
+    /**
+     * Internal helper for implementing the other `flatMap` methods.
+     */
+    private flatMapAtom<A, U, F>(
+        filter: (atom: Atom<T, E>) => FilterResult<A, Atom<U, F>>,
+        cb: (atom: A) => MaybePromise<Stream<U, F>>,
+    ): Stream<U, F> {
+        this.trace("flatMapAll");
+
+        return this.flatOp(filter, cb, async function* (_atom, stream) {
+            yield* stream;
+        });
+    }
+
     /**
      * Map over each value in the stream, produce a stream from it, and flatten all the value
      * streams together
      *
      * @group Higher Order
      */
-    flatMap<U>(cb: (value: T) => MaybePromise<MaybeAtom<Stream<U, E>, E>>): Stream<U, E> {
-        const trace = this.trace("flatMap");
+    flatMap<U>(cb: (value: T) => MaybePromise<Stream<U, E>>): Stream<U, E> {
+        this.trace("flatMap");
 
-        return this.flatMapAtom((atom) => {
-            if (isOk(atom)) {
-                return { stream: handler(() => cb(atom.value), trace) };
-            } else {
-                return { atom };
-            }
-        });
+        return this.flatMapAtom(
+            (atom) => (isOk(atom) ? accept(atom) : reject(atom)),
+            (atom) => {
+                return cb(atom.value);
+            },
+        );
     }
 
     /**
@@ -31,16 +95,15 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
      *
      * @group Higher Order
      */
-    flatMapError<F>(cb: (value: E) => MaybePromise<MaybeAtom<Stream<T, F>, F>>): Stream<T, F> {
-        const trace = this.trace("flatMapError");
+    flatMapError<F>(cb: (value: E) => MaybePromise<Stream<T, F>>): Stream<T, F> {
+        this.trace("flatMapError");
 
-        return this.flatMapAtom((atom) => {
-            if (isError(atom)) {
-                return { stream: handler(() => cb(atom.value), trace) };
-            } else {
-                return { atom };
-            }
-        });
+        return this.flatMapAtom(
+            (atom) => (isError(atom) ? accept(atom) : reject(atom)),
+            (atom) => {
+                return cb(atom.value);
+            },
+        );
     }
 
     /**
@@ -50,47 +113,31 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
      * @group Higher Order
      */
     flatMapUnknown(
-        cb: (value: unknown, trace: string[]) => MaybePromise<MaybeAtom<Stream<T, E>, E>>,
+        cb: (value: unknown, trace: string[]) => MaybePromise<Stream<T, E>>,
     ): Stream<T, E> {
         const trace = this.trace("flatMapUnknown");
 
-        return this.flatMapAtom((atom) => {
-            if (isUnknown(atom)) {
-                return { stream: handler(() => cb(atom.value, atom.trace), trace) };
-            } else {
-                return { atom };
-            }
-        });
+        return this.flatMapAtom(
+            (atom) => (isUnknown(atom) ? accept(atom) : reject(atom)),
+            (atom) => {
+                return cb(atom.value, trace);
+            },
+        );
     }
 
     /**
-     * Internal helper for implementing the other `flatMap` methods.
-     *
-     * The provided callback *must* not be able to throw. It is expected that any user code run
-     * within is properly handled.
+     * Base implementation of the `flatTap` operations.
      */
-    private flatMapAtom<U, F>(cb: (atom: Atom<T, E>) => FlatMapResult<U, F>): Stream<U, F> {
-        return this.consume(async function* (it) {
-            for await (const atom of it) {
-                // Create the new stream
-                const atomOrStream = cb(atom);
+    private flatTapAtom<A>(
+        filter: (atom: Atom<T, E>) => FilterResult<A, Atom<T, E>>,
+        cb: (atom: A) => MaybePromise<Stream<unknown, unknown>>,
+    ): Stream<T, E> {
+        this.trace("flatTapAtom");
 
-                if ("atom" in atomOrStream) {
-                    yield atomOrStream.atom;
-                    continue;
-                }
+        return this.flatOp(filter, cb, async function* (atom, stream) {
+            await exhaust(stream);
 
-                const stream = await atomOrStream.stream;
-
-                // If the returned atom isn't ok, emit it back onto the stream
-                if (!isOk(stream)) {
-                    yield stream;
-                    continue;
-                }
-
-                // Emit the generator of the new stream
-                yield* stream.value;
-            }
+            yield atom;
         });
     }
 
@@ -101,30 +148,13 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
      *
      * @group Higher Order
      */
-    flatTap(cb: (value: T) => MaybePromise<MaybeAtom<Stream<unknown, unknown>, E>>): Stream<T, E> {
-        const trace = this.trace("flatTap");
+    flatTap(cb: (value: T) => MaybePromise<Stream<unknown, unknown>>): Stream<T, E> {
+        this.trace("flatTap");
 
-        return this.consume(async function* (it) {
-            for await (const atom of it) {
-                if (!isOk(atom)) {
-                    yield atom;
-                    continue;
-                }
-
-                const streamAtom = await handler(() => cb(atom.value), trace);
-
-                if (isOk(streamAtom)) {
-                    // Consume the resulting stream, and emit the original atom
-                    for await (const _ of streamAtom.value) {
-                        // eslint-ignore no-empty
-                    }
-
-                    yield atom;
-                } else {
-                    yield streamAtom;
-                }
-            }
-        });
+        return this.flatTapAtom(
+            (atom) => (isOk(atom) ? accept(atom) : reject(atom)),
+            (atom) => cb(atom.value),
+        );
     }
 
     /**
@@ -173,9 +203,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     replaceWith<U, F>(cbOrStream: CallbackOrStream<U, F>): Stream<U, F> {
         return this.consume(async function* (it) {
             // Consume all the items in the stream
-            for await (const _atom of it) {
-                // eslint-disable-next-line no-empty
-            }
+            await exhaust(it);
 
             // Replace with the user stream
             if (typeof cbOrStream === "function") {

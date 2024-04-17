@@ -326,26 +326,6 @@ describe.concurrent("higher order streams", () => {
             ]);
         });
 
-        test("returning stream or error", async ({ expect }) => {
-            expect.assertions(1);
-
-            const s = $.from([1, 2, 3]).flatMap<number>((n) => {
-                if (n === 2) {
-                    return $.error("number two");
-                }
-
-                return $.from(new Array(n).fill(n));
-            });
-
-            expect(await s.toArray({ atoms: true })).toEqual([
-                $.ok(1),
-                $.error("number two"),
-                $.ok(3),
-                $.ok(3),
-                $.ok(3),
-            ]);
-        });
-
         test("errors already in stream", async ({ expect }) => {
             expect.assertions(1);
 

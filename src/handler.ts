@@ -1,5 +1,13 @@
-import type { Atom, MaybeAtom } from "./atom";
-import * as atom from "./atom";
+import {
+    normalise,
+    ok,
+    unknown,
+    isUnknown,
+    type Atom,
+    type AtomOk,
+    type AtomUnknown,
+    type MaybeAtom,
+} from "./atom";
 import type { MaybePromise } from "./util";
 
 /**
@@ -24,17 +32,27 @@ export async function handler<T, E>(
     handler: () => MaybePromise<MaybeAtom<T, E>>,
     trace: string[],
 ): Promise<Atom<T, E>> {
+    const result = await run(handler, trace);
+
+    if (isUnknown(result)) {
+        return result;
+    }
+
+    return normalise(result.value);
+}
+
+/**
+ * Run some callback. If it completes successfully, the value will be returned as `AtomOk`. If an
+ * error is thrown, it will be caught and returned as an `AtomUnknown`. `AtomError` will never be
+ * produced from this helper.
+ */
+export async function run<T>(
+    cb: () => MaybePromise<T>,
+    trace: string[],
+): Promise<AtomOk<T> | AtomUnknown> {
     try {
-        // Run the handler
-        const rawResult = handler();
-
-        // Normalise the returned promise
-        const result = await normalisePromise(rawResult);
-
-        // Normalise as an atom and return
-        return atom.normalise(result);
+        return ok(await normalisePromise(cb())) as AtomOk<T>;
     } catch (e) {
-        // Unknown error thrown, return it
-        return atom.unknown(e, trace);
+        return unknown(e, trace) as AtomUnknown;
     }
 }
