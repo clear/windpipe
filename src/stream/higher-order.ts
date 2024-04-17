@@ -1,7 +1,7 @@
 import type { Stream } from ".";
 import { isError, isOk, type Atom, isUnknown } from "../atom";
 import { run } from "../handler";
-import type { CallbackOrStream, MaybePromise } from "../util";
+import { type CallbackOrStream, type MaybePromise, exhaust } from "../util";
 import { StreamTransforms } from "./transforms";
 
 function accept<T>(value: T): { accept: T } {
@@ -135,9 +135,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
         this.trace("flatTapAtom");
 
         return this.flatOp(filter, cb, async function* (atom, stream) {
-            for await (const _ of stream) {
-                //
-            }
+            await exhaust(stream);
 
             yield atom;
         });
@@ -205,9 +203,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     replaceWith<U, F>(cbOrStream: CallbackOrStream<U, F>): Stream<U, F> {
         return this.consume(async function* (it) {
             // Consume all the items in the stream
-            for await (const _atom of it) {
-                // eslint-disable-next-line no-empty
-            }
+            await exhaust(it);
 
             // Replace with the user stream
             if (typeof cbOrStream === "function") {

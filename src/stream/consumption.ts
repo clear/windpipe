@@ -1,6 +1,7 @@
 import { Readable } from "node:stream";
 import { isOk, type Atom } from "../atom";
 import { StreamBase } from "./base";
+import { exhaust } from "../util";
 
 export class StreamConsumption<T, E> extends StreamBase {
     /**
@@ -10,6 +11,14 @@ export class StreamConsumption<T, E> extends StreamBase {
      */
     [Symbol.asyncIterator](): AsyncIterator<Atom<T, E>> {
         return this.stream[Symbol.asyncIterator]();
+    }
+
+    /**
+     * Completely exhaust the stream, driving it to completion. This is particularly useful when
+     * side effects of the stream are desired, but the actual values of the stream are not needed.
+     */
+    exhaust(): Promise<void> {
+        return exhaust(this);
     }
 
     /**
