@@ -68,6 +68,8 @@
       "esm",
       "cjs"
     ],
+    "splitting": true,
+    "cjsInterop": true,
     "dts": {
       "footer": "export = Stream"
     }
