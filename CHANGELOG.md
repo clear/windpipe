@@ -1,5 +1,16 @@
 # windpipe
 
+## 0.6.0
+
+### Minor Changes
+
+- 31a0db7: alter `flat*` APIs to simplify handlers
+- ce64206: fix export for CJS
+
+### Patch Changes
+
+- e9ea819: add `exhaust` stream consumer
+
 ## 0.5.1
 
 ### Patch Changes
