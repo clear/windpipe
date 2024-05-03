@@ -1,4 +1,4 @@
-import type { Stream } from ".";
+import { Stream } from ".";
 import { isError, isOk, type Atom, isUnknown } from "../atom";
 import { run } from "../handler";
 import { type CallbackOrStream, type MaybePromise, exhaust } from "../util";
@@ -34,7 +34,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     ): Stream<U, F> {
         const trace = this.trace("flatOp");
 
-        return this.consume(async function* (it) {
+        return this.consume(async function*(it) {
             for await (const atom of it) {
                 const result = filter(atom);
 
@@ -67,7 +67,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     ): Stream<U, F> {
         this.trace("flatMapAll");
 
-        return this.flatOp(filter, cb, async function* (_atom, stream) {
+        return this.flatOp(filter, cb, async function*(_atom, stream) {
             yield* stream;
         });
     }
@@ -126,6 +126,33 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     }
 
     /**
+     * Produce a new stream from the stream that has any nested streams flattened
+     *
+     * @note Any atoms that are not nested streams are emitted as-is
+     * @group Higher Order
+     */
+    flatten(): T extends Stream<infer U, E> ? Stream<U, E> : Stream<T, E> {
+        this.trace("flatten");
+
+        return this.consume(async function*(it) {
+            for await (const atom of it) {
+                // Yield errors/unkowns directly
+                if (!isOk(atom)) {
+                    yield atom;
+                    continue;
+                }
+
+                // Yield each atom within nested streams
+                if (atom.value instanceof Stream) {
+                    yield* atom.value;
+                } else {
+                    yield atom;
+                }
+            }
+        }) as T extends Stream<infer U, E> ? Stream<U, E> : Stream<T, E>;
+    }
+
+    /**
      * Base implementation of the `flatTap` operations.
      */
     private flatTapAtom<A>(
@@ -134,7 +161,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     ): Stream<T, E> {
         this.trace("flatTapAtom");
 
-        return this.flatOp(filter, cb, async function* (atom, stream) {
+        return this.flatOp(filter, cb, async function*(atom, stream) {
             await exhaust(stream);
 
             yield atom;
@@ -166,7 +193,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
      * @group Higher Order
      */
     otherwise(cbOrStream: CallbackOrStream<T, E>): Stream<T, E> {
-        return this.consume(async function* (it) {
+        return this.consume(async function*(it) {
             // Count the items being emitted from the iterator
             let count = 0;
             for await (const atom of it) {
@@ -201,7 +228,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
      * @group Higher Order
      */
     replaceWith<U, F>(cbOrStream: CallbackOrStream<U, F>): Stream<U, F> {
-        return this.consume(async function* (it) {
+        return this.consume(async function*(it) {
             // Consume all the items in the stream
             await exhaust(it);
 
