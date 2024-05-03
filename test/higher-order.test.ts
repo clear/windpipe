@@ -127,5 +127,49 @@ describe.concurrent("higher order streams", () => {
         });
     });
 
-});
+    describe.concurrent("flatten", () => {
+        test("simple nested stream", async ({ expect }) => {
+            expect.assertions(1);
 
+            const s = $.from([$.from([1, 2]), $.from([3, 4])]).flatten();
+
+            // We should get all values in order
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3), $.ok(4)]);
+        });
+
+        test("no effect on already flat stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([1, 2, 3, 4]).flatten();
+
+            // We should get all values in order
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3), $.ok(4)]);
+        });
+
+        test("correctly flattens mixed depth stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([1, 2, $.from([3, 4])]).flatten();
+
+            // We should get all values in order
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3), $.ok(4)]);
+        });
+
+        test("maintains errors from flattened stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([$.ok($.from([1, 2])), $.error("oh no")]).flatten();
+
+            // We should get all values in order
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.error("oh no")]);
+        });
+
+        test("flattening an empty stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from<number, unknown>([]).flatten();
+
+            expect(await s.toArray({ atoms: true })).toEqual([]);
+        });
+    });
+});

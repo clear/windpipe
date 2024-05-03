@@ -18,7 +18,7 @@ describe.concurrent("stream creation", () => {
             expect.assertions(1);
 
             const s = $.fromIterator(
-                (function*() {
+                (function* () {
                     yield 1;
                     yield 2;
                     yield 3;
@@ -32,7 +32,7 @@ describe.concurrent("stream creation", () => {
             expect.assertions(1);
 
             const s = $.fromIterator(
-                (async function*() {
+                (async function* () {
                     yield 1;
                     yield 2;
                     yield 3;
