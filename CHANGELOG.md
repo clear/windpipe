@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.7.0
+
+### Minor Changes
+
+- 10e211e: Implement .flatten() method on streams
+
 ## 0.6.0
 
 ### Minor Changes
