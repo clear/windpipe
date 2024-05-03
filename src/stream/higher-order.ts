@@ -1,4 +1,4 @@
-import type { Stream } from ".";
+import { Stream } from ".";
 import { isError, isOk, type Atom, isUnknown } from "../atom";
 import { run } from "../handler";
 import { type CallbackOrStream, type MaybePromise, exhaust } from "../util";
@@ -123,6 +123,33 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
                 return cb(atom.value, trace);
             },
         );
+    }
+
+    /**
+     * Produce a new stream from the stream that has any nested streams flattened
+     *
+     * @note Any atoms that are not nested streams are emitted as-is
+     * @group Higher Order
+     */
+    flatten(): T extends Stream<infer U, infer V> ? Stream<U, V | E> : Stream<T, E> {
+        this.trace("flatten");
+
+        return this.consume(async function* (it) {
+            for await (const atom of it) {
+                // Yield errors/unkowns directly
+                if (!isOk(atom)) {
+                    yield atom;
+                    continue;
+                }
+
+                // Yield each atom within nested streams
+                if (atom.value instanceof Stream) {
+                    yield* atom.value;
+                } else {
+                    yield atom;
+                }
+            }
+        }) as T extends Stream<infer U, infer V> ? Stream<U, V | E> : Stream<T, E>;
     }
 
     /**
