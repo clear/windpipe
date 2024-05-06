@@ -56,6 +56,32 @@ describe.concurrent("stream transforms", () => {
         });
     });
 
+    describe.concurrent("collect", () => {
+        test("simple stream without errors", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([1, 2, 3]).collect();
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok([1, 2, 3])]);
+        });
+
+        test("empty stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([]).collect();
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok([])]);
+        });
+
+        test("single error", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([$.error(1), $.ok(2), $.ok(3)]).collect();
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.error(1), $.ok([2, 3])]);
+        });
+    })
+
     describe.concurrent("mapError", () => {
         test("single error", async ({ expect }) => {
             expect.assertions(1);
