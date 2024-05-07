@@ -12,7 +12,7 @@ import {
 } from "../atom";
 import { HigherOrderStream } from "./higher-order";
 
-export type { StreamEnd } from "./base";
+export { StreamEnd } from "./base";
 
 /**
  * @template T - Type of the 'values' on the stream.

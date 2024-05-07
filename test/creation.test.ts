@@ -1,5 +1,5 @@
 import { describe, test } from "vitest";
-import $ from "../src";
+import $, { StreamEnd } from "../src";
 import { Readable } from "stream";
 
 describe.concurrent("stream creation", () => {
@@ -97,6 +97,67 @@ describe.concurrent("stream creation", () => {
             });
 
             expect(await s.toArray({ atoms: true })).toEqual([$.error("an error")]);
+        });
+    });
+
+    describe.concurrent("from next function", () => {
+        test("simple count up", async ({ expect }) => {
+            expect.assertions(1);
+
+            let i = 0;
+            const s = $.fromNext(async () => {
+                if (i < 4) {
+                    return i++;
+                } else {
+                    return StreamEnd;
+                }
+            });
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(0), $.ok(1), $.ok(2), $.ok(3)]);
+        });
+
+        test("next atoms produces atoms", async ({ expect }) => {
+            expect.assertions(1);
+
+            const atoms = [$.ok(0), $.error("some error"), $.ok(1), $.unknown("unknown error", [])];
+            const s = $.fromNext(async () => {
+                if (atoms.length > 0) {
+                    return atoms.shift();
+                } else {
+                    return StreamEnd;
+                }
+            });
+
+            expect(await s.toArray({ atoms: true })).toEqual([
+                $.ok(0),
+                $.error("some error"),
+                $.ok(1),
+                $.unknown("unknown error", []),
+            ]);
+        });
+
+        test("next catches unhandled errors", async ({ expect }) => {
+            expect.assertions(1);
+
+            let i = 0;
+            const s = $.fromNext(async () => {
+                i += 1;
+
+                if (i === 1) {
+                    throw "some error";
+                }
+
+                if (i == 2) {
+                    return i;
+                }
+
+                return StreamEnd;
+            });
+
+            expect(await s.toArray({ atoms: true })).toEqual([
+                $.unknown("some error", []),
+                $.ok(2),
+            ]);
         });
     });
 });
