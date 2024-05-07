@@ -80,6 +80,33 @@ for await (const atom in s) {
   (error) { loud_msg: "encountered an error: CAN'T DIVIDE BY ZERO" }
 */
 ```
+
+# Concepts
+
+## Atoms
+
+Every item in a stream is an [`Atom`](https://clear.github.io/windpipe/types/Atom.html), and an
+`Atom` has one of three variations:
+
+- [`AtomOk`](https://clear.github.io/windpipe/types/AtomOk.html): These are generally the things
+that you are processing and would care about on the stream.
+
+- [`AtomError`](https://clear.github.io/windpipe/types/AtomError.html): These are application
+errors which are expected to occur. In other words, they are errors that occur in the problem
+domain you are working in.
+
+- [`AtomUnknown`](https://clear.github.io/windpipe/types/AtomUnknown.html): These are encompass
+any runtime error that may be raised from your code.
+
+For example, if you were making a program to process account transactions, the atom variations
+could include:
+
+- `AtomOk`: `Transaction { id: number, amount: number, description: string }`
+
+- `AtomError`: `TransactionError { type: "low-balance" | "empty-description" | "duplicate-id" }`
+
+- `AtomUnknown`: `TypeError`, `ReferenceError`, other uncaught errors
+
 # Error Handling
 
 Error handling is a crucial component to every application, however languages like JavaScript and
