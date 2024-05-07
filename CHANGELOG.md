@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.8.1
+
+### Patch Changes
+
+- 52f03a1: fix broken types
+
 ## 0.8.0
 
 ### Minor Changes
