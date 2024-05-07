@@ -195,12 +195,18 @@ export class StreamBase {
             new Readable({
                 objectMode: true,
                 async read() {
-                    const value = await next();
+                    try {
+                        const value = await next();
 
-                    if (value === StreamEnd) {
-                        this.push(null);
-                    } else {
-                        this.push(normalise(value));
+                        // Promise returned as normal
+                        if (value === StreamEnd) {
+                            this.push(null);
+                        } else {
+                            this.push(normalise(value));
+                        }
+                    } catch (e) {
+                        // Promise was rejected, add as an unknown error
+                        this.push(unknown(e, []));
                     }
                 },
             }),
