@@ -1,6 +1,7 @@
 import { normalise, type Atom, type MaybeAtom, error, unknown } from "../atom";
 import { Stream } from ".";
 import { Readable, Writable } from "stream";
+import { createNodeCallback } from "../util";
 
 /**
  * Marker for the end of a stream.
@@ -82,6 +83,25 @@ export class StreamBase {
         }
 
         throw new TypeError("expected a promise, (async) iterator, or (async) iterable");
+    }
+
+    /**
+     * Create a stream from a node-style callback. A node-compatible callback function will be
+     * passed as the first parameter to the callback of this function.
+     *
+     * The first parameter provided to the callback (the `error`) will be emitted as an `Error`
+     * atom, whilst the second parameter (the `value`) will be emitted as an `Ok` atom.
+     *
+     * @group Creation
+     */
+    static fromCallback<T, E>(cb: (next: (error: E, value: T) => unknown) => void): Stream<T, E> {
+        // Set up a next function
+        const [promise, next] = createNodeCallback<T, E>();
+
+        // Run the callback
+        cb(next);
+
+        return StreamBase.fromPromise(promise);
     }
 
     /**
