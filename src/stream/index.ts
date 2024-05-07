@@ -14,6 +14,10 @@ import { HigherOrderStream } from "./higher-order";
 
 export type { StreamEnd } from "./base";
 
+/**
+ * @template T - Type of the 'values' on the stream.
+ * @template E - Type of the 'errors' on the stream.
+ */
 export class Stream<T, E> extends HigherOrderStream<T, E> {
     // Re-export atom utilities for convenience
     /**

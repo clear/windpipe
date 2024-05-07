@@ -1,10 +1,19 @@
 import { Stream } from "./stream";
 
 // Export all useful types for atoms
-export type { Atom, AtomOk, AtomError, AtomUnknown } from "./atom";
+export type {
+    Atom,
+    AtomOk,
+    AtomError,
+    AtomUnknown,
+    VALUE,
+    ERROR,
+    UNKNOWN,
+    MaybeAtom,
+} from "./atom";
 
-// Re-export all utility types
-export type * from "./util";
+// Re-export useful utility types
+export type { MaybePromise, Truthy, CallbackOrStream } from "./util";
 
 // Export the `StreamEnd` type
 export type { StreamEnd } from "./stream";
