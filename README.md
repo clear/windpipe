@@ -12,7 +12,7 @@
 
 - Built-in error handling for stream operaitons
 
-- Many common stream operations (`map`, `tap`, `flat_map`, etc.)
+- Many common stream operations (`map`, `tap`, `flatMap`, etc.)
 
 - Interopability with other async primitives:
 
@@ -20,11 +20,9 @@
 
   - Iterators (async and standard)
 
-  - Node streams (WIP)
+  - Node streams
 
-- Stream kind (single emitter, multi-emitter, fallible, etc) in type system (WIP)
-
-- Control flow operators (`if` and `case`, WIP)
+  - Generators
 
 - Stream-relative stack traces (nested anonymous functions in stack traces no more!)
 
@@ -33,10 +31,12 @@
 ## Simple
 
 ```ts
-const values = await Stream.of(10) // Create a stream with a single value
+import $ from "windpipe";
+
+const values = await $.of(10) // Create a stream with a single value
     .map((value) => value * 2) // Double each value in the stream
     .tap((value) => console.log(`The doubled value is: ${value}`)) // Perform some side effect on each value
-    .flat_map((value) => [value, -1 * value]) // Use each value to produce multiple new values
+    .flatMap((value) => $.from([value, -1 * value])) // Use each value to produce multiple new values
     .toArray(); // Consume the stream into a promise that will emit an array
 
 console.log(values); // [20, -20]
@@ -45,7 +45,9 @@ console.log(values); // [20, -20]
 ## Error Handling
 
 ```ts
-const s = Stream.from([1, 2, 5, 0])
+import $ from "windpipe";
+
+const s = $.from([1, 2, 5, 0])
     .map((value) => {
         if (value === 0) {
             // Invalid value, produce an error
@@ -54,22 +56,18 @@ const s = Stream.from([1, 2, 5, 0])
 
         return 10 / value;
     })
-    .map_err((err) => ({
+    .mapError((err) => $.error({
         // We have to shout at the user, change the error message
-        loud_msg: err.msg.toUpperCase()
+        loudMsg: err.msg.toUpperCase()
     }));
 
 
-while (true) {
-    const next = await s.next();
-
-    if (is_end(next)) {
-        // End of the stream reached!
-        break;
-    } else if (is_ok(next)) {
+// Iterate through each 'atom' on the stream
+for await (const atom in s) {
+    if ($.isOk(atom)) {
         // Successful value!
-        console.log(next.value);
-    } else if (is_err(next)) {
+        console.log(atom.value);
+    } else if ($.isError(atom)) {
         // An error was encountered
         console.error("encountered an error:", next.value);
     }
@@ -82,32 +80,6 @@ while (true) {
   (error) { loud_msg: "encountered an error: CAN'T DIVIDE BY ZERO" }
 */
 ```
-
-## Control Flow
-
-In an effort to make common patterns like applying `if` statements in a `flat_map`, some basic
-control flow operations are available directly on the stream!
-
-```ts
-// Using stream control flow:
-Stream.from([83, 18398, 915, 618])
-    .if((value) => value > 750, (value) => process_large_transaction(value))
-    .else_if((value) => value < 100, (value) => process_small_transaction(value))
-    .else((value) => process_transaction(value))
-
-// Using regular `flat_map` with native control flow
-Stream.from([83, 18398, 915, 618])
-    .flat_map((value) => {
-        if (value > 750) {
-            return process_large_transaction(value);
-        } else if (value < 100) {
-            return process_small_transaction(value);
-        } else {
-            return process_transaction(value);
-        }
-    });
-```
-
 # Error Handling
 
 Error handling is a crucial component to every application, however languages like JavaScript and
