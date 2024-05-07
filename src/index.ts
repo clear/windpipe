@@ -12,7 +12,7 @@ export type {
     MaybeAtom,
 } from "./atom";
 
-// Re-export all utility types
+// Re-export useful utility types
 export type { MaybePromise, Truthy, CallbackOrStream } from "./util";
 
 // Export the `StreamEnd` type
