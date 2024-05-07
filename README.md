@@ -85,13 +85,13 @@ for await (const atom in s) {
 
 ## Atoms
 
-Every item in a stream is an [`Atom`](https://clear.github.io/windpipe/types/Atom.html), and an
-`Atom` has one of three variations:
+Every item in a stream is an [`Atom<T, E>`](https://clear.github.io/windpipe/types/Atom.html), and
+an `Atom<T, E>` has one of three variations:
 
-- [`AtomOk`](https://clear.github.io/windpipe/types/AtomOk.html): These are generally the things
+- [`AtomOk<T>`](https://clear.github.io/windpipe/types/AtomOk.html): These are generally the things
 that you are processing and would care about on the stream.
 
-- [`AtomError`](https://clear.github.io/windpipe/types/AtomError.html): These are application
+- [`AtomError<E>`](https://clear.github.io/windpipe/types/AtomError.html): These are application
 errors which are expected to occur. In other words, they are errors that occur in the problem
 domain you are working in.
 
@@ -106,6 +106,59 @@ could include:
 - `AtomError`: `TransactionError { type: "low-balance" | "empty-description" | "duplicate-id" }`
 
 - `AtomUnknown`: `TypeError`, `ReferenceError`, other uncaught errors
+
+In application code, this would be typed as `Atom<Transaction, TransactionError>`.  This is
+because both `Transaction` and `TransactionError` are relevant to the domain, and therefore will
+appear in type signatures. On the other hand, the type of 'uncaught' errors that maybe thrown are
+not typed in JavaScript or TypeScript, so there is no guarantee if they may occur, and what they
+may be, which is why `AtomUnknown` does not appear within the type.
+
+### `AtomError` vs `AtomUnknown`
+
+In general, there are two types of errors that you will encounter: errors you care about, and
+errors you don't. More concretely, these are errors that you will plan and check for, and errors
+that aren't practical to exhaustively check (you can't wrap every line in a `try`/`catch`).
+Normally there is no way for these two error types to be distinguished, and it is up to the
+developer to decide what they care about handling, and to remember to do so.
+
+Windpipe assists the developer by seperating the errors, embedding the errors you care about in
+the type system (indicated by the `E` generic), collecting all other errors into the 'unknown'
+atom.
+
+### Returning Atoms
+
+Windpipe does its best to guess your intended atom type where possible, using the following rules:
+
+- If a handler returns an `Atom<T, E>`, it will be used.
+
+```js
+return $.ok({ balance: 10 });
+```
+
+- If a handler throws an error, it will be `AtomUnknown`.
+
+```js
+throw new Error("something happened");
+```
+
+- Any other value returned from an error will be `AtomOk<T>`.
+
+```js
+return { balance: 10 };
+```
+
+If you would like a specific atom type to be used, the following shorthands can be used:
+
+- `AtomOk<T>`: `$.ok(value)`
+
+- `AtomError<E>`: `$.error(value)`
+
+- `AtomUnknown`: `$.unknown(value, trace)`
+
+  - This shorthand should rarely be used, as unknown errors really shouldn't be manually created.
+  Windpipe tracks the location that the error was emitted, which is what the `trace` parameter
+  represents. If you are unsure what to include here, an empty array is acceptable, but not
+  recommended.
 
 # Error Handling
 
