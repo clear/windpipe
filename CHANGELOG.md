@@ -1,5 +1,18 @@
 # windpipe
 
+## 0.8.0
+
+### Minor Changes
+
+- ad86792: Add .collect() method to streams
+- 3ce4ff3: Implement `fromCallback` for stream creation
+- 909d5a1: Adds the `cachedFlatMap` operator
+
+### Patch Changes
+
+- af01d2f: catch unhandled errors in `fromNext` stream creation
+- 022efea: Improve exported API and generated docs
+
 ## 0.7.0
 
 ### Minor Changes
