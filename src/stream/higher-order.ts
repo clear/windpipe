@@ -138,7 +138,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
         const trace = this.trace("cachedFlatMap");
 
         return this.consume(async function* (it) {
-            const cache = new Map<string | number | symbol, Atom<U, E>[]>();
+            const cache = new Map<PropertyKey, Atom<U, E>[]>();
 
             for await (const atom of it) {
                 if (!isOk(atom)) {
