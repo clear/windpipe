@@ -4,19 +4,19 @@ import { Readable, Writable } from "stream";
 import { createNodeCallback } from "../util";
 
 /**
- * Marker for the end of a stream.
- */
-export const StreamEnd = Symbol.for("STREAM_END");
-
-/**
  * Unique type to represent the stream end marker.
  */
-export type StreamEnd = typeof StreamEnd;
+export type StreamEnd = typeof StreamBase.StreamEnd;
 
 export class StreamBase {
     protected stream: Readable;
     protected stackTrace: string[] = [];
     protected traceComplete: boolean = false;
+
+    /**
+     * Marker for the end of a stream.
+     */
+    static StreamEnd = Symbol.for("STREAM_END");
 
     constructor(stream: Readable) {
         this.stream = stream;
@@ -124,7 +124,7 @@ export class StreamBase {
 
                 return normalise(await promise);
             } else {
-                return StreamEnd;
+                return StreamBase.StreamEnd;
             }
         });
     }
@@ -144,7 +144,7 @@ export class StreamBase {
             const { value, done } = result instanceof Promise ? await result : result;
 
             if (done) {
-                return StreamEnd;
+                return StreamBase.StreamEnd;
             } else {
                 return normalise(value);
             }
@@ -178,7 +178,7 @@ export class StreamBase {
      */
     static fromArray<T, E>(array: MaybeAtom<T, E>[]): Stream<T, E> {
         return Stream.fromNext(async () => {
-            return array.shift() ?? StreamEnd;
+            return array.shift() ?? StreamBase.StreamEnd;
         });
     }
 
@@ -199,9 +199,11 @@ export class StreamBase {
                         const value = await next();
 
                         // Promise returned as normal
-                        if (value === StreamEnd) {
+                        if (value === StreamBase.StreamEnd) {
                             this.push(null);
                         } else {
+                            // @ts-expect-error - The previous `if` statement doesn't cause TS to
+                            // type-narrow out `symbol`
                             this.push(normalise(value));
                         }
                     } catch (e) {
@@ -226,7 +228,7 @@ export class StreamBase {
                 consumed = true;
                 return value;
             } else {
-                return StreamEnd;
+                return StreamBase.StreamEnd;
             }
         });
     }
@@ -285,7 +287,7 @@ export class StreamBase {
             },
             async final(callback) {
                 // Emit a `StreamEnd` to close the stream
-                enqueue(StreamEnd);
+                enqueue(StreamBase.StreamEnd);
 
                 callback();
             },

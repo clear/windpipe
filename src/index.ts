@@ -15,7 +15,4 @@ export type {
 // Re-export useful utility types
 export type { MaybePromise, Truthy, CallbackOrStream } from "./util";
 
-// Export the `StreamEnd` type
-export { StreamEnd } from "./stream";
-
 export default Stream;

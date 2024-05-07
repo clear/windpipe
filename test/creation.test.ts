@@ -1,5 +1,5 @@
 import { describe, test } from "vitest";
-import $, { StreamEnd } from "../src";
+import $ from "../src";
 import { Readable } from "stream";
 
 describe.concurrent("stream creation", () => {
@@ -109,7 +109,7 @@ describe.concurrent("stream creation", () => {
                 if (i < 4) {
                     return i++;
                 } else {
-                    return StreamEnd;
+                    return $.StreamEnd;
                 }
             });
 
@@ -124,7 +124,7 @@ describe.concurrent("stream creation", () => {
                 if (atoms.length > 0) {
                     return atoms.shift();
                 } else {
-                    return StreamEnd;
+                    return $.StreamEnd;
                 }
             });
 
@@ -151,7 +151,7 @@ describe.concurrent("stream creation", () => {
                     return i;
                 }
 
-                return StreamEnd;
+                return $.StreamEnd;
             });
 
             expect(await s.toArray({ atoms: true })).toEqual([

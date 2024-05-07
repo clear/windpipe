@@ -1,7 +1,6 @@
 import { describe, bench } from "vitest";
 import Stream from "../../src";
 import Highland from "highland";
-import { StreamEnd } from "../../src/stream/base";
 import { error, ok } from "../../src/atom";
 
 const SAMPLE_SIZE = 10;
@@ -14,7 +13,7 @@ describe("stream creation from next function", () => {
             if (i < SAMPLE_SIZE) {
                 return i++;
             } else {
-                return StreamEnd;
+                return Stream.StreamEnd;
             }
         }).toArray();
     });
