@@ -126,6 +126,54 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     }
 
     /**
+     * Map over each value in the stream, produce a stream from it, cache the resultant stream
+     * and flatten all the value streams together
+     *
+     * @group Higher Order
+     */
+    cachedFlatMap<U>(
+        cb: (value: T) => MaybePromise<Stream<U, E>>,
+        keyFn: (value: T) => string | number | symbol,
+    ): Stream<U, E> {
+        const trace = this.trace("cachedFlatMap");
+
+        return this.consume(async function* (it) {
+            const cache = new Map<PropertyKey, Atom<U, E>[]>();
+
+            for await (const atom of it) {
+                if (!isOk(atom)) {
+                    yield atom;
+                    continue;
+                }
+
+                const key = keyFn(atom.value);
+                const cachedValues = cache.get(key);
+
+                if (cachedValues !== undefined) {
+                    yield* cachedValues;
+                    continue;
+                }
+
+                // Run the flat map handler
+                const streamAtom = await run(() => cb(atom.value), trace);
+
+                // If an error was emitted whilst initialising the new stream, return it
+                if (!isOk(streamAtom)) {
+                    yield streamAtom;
+                    continue;
+                }
+
+                // Otherwise, consume the iterator
+                const values = await streamAtom.value.toArray({ atoms: true });
+
+                cache.set(key, values);
+
+                yield* values;
+            }
+        });
+    }
+
+    /**
      * Produce a new stream from the stream that has any nested streams flattened
      *
      * @note Any atoms that are not nested streams are emitted as-is
