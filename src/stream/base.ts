@@ -172,11 +172,17 @@ export class StreamBase {
     /**
      * Create a stream from an array.
      *
+     * @note The array will be shallow cloned internally, so that the original array won't be
+     * impacted.
+     *
      * @param array - The array that values will be emitted from.
      *
      * @group Creation
      */
     static fromArray<T, E>(array: MaybeAtom<T, E>[]): Stream<T, E> {
+        // Clone the array so that shifting elements doesn't impact the original array.
+        array = [...array];
+
         return Stream.fromNext(async () => {
             return array.shift() ?? StreamBase.StreamEnd;
         });

@@ -61,6 +61,26 @@ describe.concurrent("stream creation", () => {
         });
     });
 
+    describe.concurrent("from array", () => {
+        test("simple array", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.fromArray([1, 2, 3]);
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3)]);
+        });
+
+        test("don't modify original array", async ({ expect }) => {
+            expect.assertions(2);
+
+            const array = [1, 2, 3];
+            const s = $.fromArray(array);
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3)]);
+            expect(array).toHaveLength(3);
+        });
+    });
+
     describe.concurrent("from callback", () => {
         /**
          * Sample function that accepts a node-style callback.
