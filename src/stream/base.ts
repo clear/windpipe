@@ -92,6 +92,9 @@ export class StreamBase {
      * The first parameter provided to the callback (the `error`) will be emitted as an `Error`
      * atom, whilst the second parameter (the `value`) will be emitted as an `Ok` atom.
      *
+     * @example
+     * $.fromCallback((next) => someAsyncMethod(paramA, paramB, next));
+     *
      * @group Creation
      */
     static fromCallback<T, E>(cb: (next: (error: E, value: T) => unknown) => void): Stream<T, E> {
