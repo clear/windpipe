@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.8.2
+
+### Patch Changes
+
+- 01dff15: clone array in `fromArray` to prevent mutating original array
+
 ## 0.8.1
 
 ### Patch Changes
