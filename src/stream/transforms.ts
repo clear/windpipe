@@ -24,6 +24,29 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     }
 
     /**
+     * Collect the values of the stream atoms into an array then return a stream which emits that array
+     *
+     * @note non-ok atoms are emitted as-is, the collected array is always emitted last
+     * @note empty streams will emit an empty array
+     * @group Transform
+     */
+    collect(): Stream<T[], E> {
+        this.trace("collect");
+
+        return this.consume(async function* (it) {
+            const values: T[] = [];
+            for await (const atom of it) {
+                if (isOk(atom)) {
+                    values.push(atom.value);
+                } else {
+                    yield atom;
+                }
+            }
+            yield ok(values);
+        });
+    }
+
+    /**
      * Map over each value in the stream.
      *
      * @group Transform
