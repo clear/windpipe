@@ -80,6 +80,14 @@ describe.concurrent("stream transforms", () => {
 
             expect(await s.toArray({ atoms: true })).toEqual([$.error(1), $.ok([2, 3])]);
         });
+
+        test("single unknown", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([$.unknown(1, []), $.ok(2), $.ok(3)]).collect();
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.unknown(1, []), $.ok([2, 3])]);
+        });
     });
 
     describe.concurrent("mapError", () => {
