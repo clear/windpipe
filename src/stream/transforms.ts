@@ -33,11 +33,11 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     collect(): Stream<T[], E> {
         this.trace("collect");
 
-        return this.consume(async function*(it) {
-            let values: T[] = []
+        return this.consume(async function* (it) {
+            const values: T[] = [];
             for await (const atom of it) {
                 if (isOk(atom)) {
-                    values.push(atom.value)
+                    values.push(atom.value);
                 } else {
                     yield atom;
                 }
@@ -54,7 +54,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     map<U>(cb: (value: T) => MaybePromise<MaybeAtom<U, E>>): Stream<U, E> {
         const trace = this.trace("map");
 
-        return this.consume(async function*(it) {
+        return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isOk(atom)) {
                     yield await handler(() => cb(atom.value), trace);
@@ -73,7 +73,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     mapError<F>(cb: (error: E) => MaybePromise<MaybeAtom<T, F>>): Stream<T, F> {
         const trace = this.trace("mapError");
 
-        return this.consume(async function*(it) {
+        return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isError(atom)) {
                     yield await handler(() => cb(atom.value), trace);
@@ -92,7 +92,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     mapUnknown(cb: (error: unknown) => MaybePromise<MaybeAtom<T, E>>): Stream<T, E> {
         const trace = this.trace("mapUnknown");
 
-        return this.consume(async function*(it) {
+        return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isUnknown(atom)) {
                     yield await handler(() => cb(atom.value), trace);
@@ -130,7 +130,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     inspect(): Stream<T, E> {
         this.trace("inspect");
 
-        return this.consume(async function*(it) {
+        return this.consume(async function* (it) {
             for await (const atom of it) {
                 console.log(util.inspect(atom, false, Infinity, true));
 
@@ -147,7 +147,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     filter(condition: (value: T) => MaybePromise<unknown>): Stream<T, E> {
         const trace = this.trace("filter");
 
-        return this.consume(async function*(it) {
+        return this.consume(async function* (it) {
             for await (const atom of it) {
                 // Re-emit any existing errors onto the stream
                 if (!isOk(atom)) {
@@ -199,7 +199,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     reduce<U>(cb: (memo: U, value: T) => MaybePromise<MaybeAtom<U, E>>, memo: U): Stream<U, E> {
         const trace = this.trace("reduce");
 
-        return this.consume(async function*(it) {
+        return this.consume(async function* (it) {
             for await (const atom of it) {
                 if (isOk(atom)) {
                     // Run the reducer
@@ -231,7 +231,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     take(n: number, options?: { atoms?: boolean }): Stream<T, E> {
         this.trace("take");
 
-        return this.consume(async function*(it) {
+        return this.consume(async function* (it) {
             let i = 0;
 
             for await (const atom of it) {
@@ -256,7 +256,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     drop(n: number, options?: { atoms?: boolean }): Stream<T, E> {
         this.trace("drop");
 
-        return this.consume(async function*(it) {
+        return this.consume(async function* (it) {
             let i = 0;
 
             for await (const atom of it) {
@@ -283,7 +283,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     delay(ms: number): Stream<T, E> {
         this.trace("delay");
 
-        return this.consume(async function*(it) {
+        return this.consume(async function* (it) {
             for await (const atom of it) {
                 await new Promise((resolve) => setTimeout(resolve, ms));
 

@@ -80,7 +80,7 @@ describe.concurrent("stream transforms", () => {
 
             expect(await s.toArray({ atoms: true })).toEqual([$.error(1), $.ok([2, 3])]);
         });
-    })
+    });
 
     describe.concurrent("mapError", () => {
         test("single error", async ({ expect }) => {
