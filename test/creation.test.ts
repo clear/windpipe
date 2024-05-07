@@ -60,4 +60,43 @@ describe.concurrent("stream creation", () => {
             expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3)]);
         });
     });
+
+    describe.concurrent("from callback", () => {
+        /**
+         * Sample function that accepts a node-style callback.
+         *
+         * @param success - Whether the method should succeed or fail.
+         * @param cb - Node-style callback to pass error or value to.
+         */
+        function someNodeCallback(
+            success: boolean,
+            cb: (error: string | undefined, value?: number) => void,
+        ) {
+            if (success) {
+                cb(undefined, 123);
+            } else {
+                cb("an error");
+            }
+        }
+
+        test("value returned from callback", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.fromCallback((next) => {
+                someNodeCallback(true, next);
+            });
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(123)]);
+        });
+
+        test("error returned from callback", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.fromCallback((next) => {
+                someNodeCallback(false, next);
+            });
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.error("an error")]);
+        });
+    });
 });

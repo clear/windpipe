@@ -1,4 +1,4 @@
-import Stream from ".";
+import Stream, { type Atom } from ".";
 
 /**
  * Maybe it's a promise. Maybe it's not. Who's to say.
@@ -29,4 +29,35 @@ export async function exhaust(iterable: AsyncIterable<unknown>) {
             break;
         }
     }
+}
+
+/**
+ * Creates a `next` function and associated promise to promise-ify a node style callback. The
+ * `next` function must be passed as the callback to a function, and the resulting error or value
+ * will be emitted from the promise. The promise will always resolve.
+ *
+ * The error value of the callback (first parameter) will be emitted as an `Error` atom from the
+ * promise, whilst the value of the callback (second parameter) will be emitted as an `Ok` atom on
+ * the promise.
+ */
+export function createNodeCallback<T, E>(): [Promise<Atom<T, E>>, (error: E, value: T) => void] {
+    // Resolve function to be hoisted out of the promise
+    let resolve: (atom: Atom<T, E>) => void;
+
+    // Create the prom
+    const promise = new Promise<Atom<T, E>>((res) => {
+        resolve = res;
+    });
+
+    // Create the next callback
+    const next = (err: E, value: T) => {
+        if (err) {
+            resolve(Stream.error(err));
+        } else {
+            resolve(Stream.ok(value));
+        }
+    };
+
+    // Return a tuple of the promise and next function
+    return [promise, next];
 }
