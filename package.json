@@ -7,7 +7,7 @@
     "lint": "tsc && eslint .",
     "format": "eslint --fix .",
     "build": "tsup ./src/index.ts",
-    "doc": "typedoc ./src --media ./media --plugin typedoc-plugin-extras --favicon ./media/favicon.ico --footerLastModified true --plugin typedoc-material-theme --themeColor '#03284e' --plugin typedoc-plugin-rename-defaults",
+    "doc": "typedoc ./src --media ./media --plugin typedoc-plugin-extras --favicon ./media/logo.png --footerLastModified true --plugin typedoc-material-theme --themeColor '#03284e' --plugin typedoc-plugin-rename-defaults",
     "test": "vitest",
     "ci:release": "npm run build && changeset publish"
   },
