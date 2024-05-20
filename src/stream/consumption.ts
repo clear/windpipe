@@ -83,6 +83,7 @@ export class StreamConsumption<T, E> extends StreamBase {
      * @param options.atoms - By default, only `ok` values are serialised, however enabling this
      * will serialise all values.
      *
+     * @see {@link Stream#toReadable} if serialisation is not required
      * @group Consumption
      */
     serialise(options?: { single?: boolean; atoms?: boolean }): Readable {
@@ -125,6 +126,94 @@ export class StreamConsumption<T, E> extends StreamBase {
 
             if (options?.single !== true) {
                 s.push("]");
+            }
+
+            // End the stream
+            s.push(null);
+        })();
+
+        return s;
+    }
+
+    /**
+     * Produce a readable node stream with the values from the stream.
+     *
+     * @param kind - What kind of readable stream to produce. When "raw" only strings and buffers can be emitted on the stream. Use "object" to preserve
+     * objects in the readable stream. Note that object values are not serialised, they are emitted as objects.
+     * @param options - Options for configuring how atoms are output on the stream
+     *
+     * @see {@link Stream#serialize} if the stream values should be serialized to json
+     * @group Consumption
+     */
+    toReadable(kind: "raw" | "object", options?: { single?: boolean; atoms?: boolean }): Readable;
+
+    /**
+     * Produce a readable node stream with the raw values from the stream.
+     *
+     * @param options.single - Whether to emit only the first atom
+     *
+     * @see {@link Stream#serialize} if the stream values should be serialized to json
+     * @group Consumption
+     */
+    toReadable(kind: "raw", options?: { single?: boolean }): Readable;
+
+    /**
+     * Produce a readable node stream with the values from the stream
+     *
+     * @param options.single - Whether to emit only the first atom
+     * @param options.atoms - By default, only `ok` values are emitted, however enabling this
+     * will emit all values.
+     *
+     * @see {@link Stream#serialize} if the stream values should be serialized to json
+     * @group Consumption
+     */
+    toReadable(kind: "object", options?: { single?: boolean; atoms?: boolean }): Readable;
+
+    toReadable(
+        kind: "raw" | "object",
+        options: { single?: boolean; atoms?: boolean } = {},
+    ): Readable {
+        // Set up a new readable stream that does nothing
+        const s = new Readable({
+            read() {},
+            objectMode: kind === "object",
+        });
+
+        // Spin off asynchronously so that the stream can be immediately returned
+        (async () => {
+            let sentItems = 0;
+
+            for await (const atom of this) {
+                // Determine whether non-ok values should be filtered out
+                if (options?.atoms !== true && !isOk(atom)) {
+                    continue;
+                }
+
+                // Monitor for multiple values being sent when only one is desired
+                if (sentItems > 0 && options?.single) {
+                    console.warn(
+                        "indicated that stream would emit a single value, however multiple were emitted (ignoring)",
+                    );
+                    break;
+                }
+
+                // monitor for non raw values when not using object mode
+                if (
+                    kind === "raw" &&
+                    !(typeof atom.value === "string" || atom.value instanceof Buffer)
+                ) {
+                    s.emit(
+                        "error",
+                        new Error(
+                            `Stream indicated it would emit raw values but emitted a '${typeof atom.value}' object`,
+                        ),
+                    );
+                    break;
+                }
+
+                // Emit atom or atom value
+                s.push(options?.atoms ? atom : atom.value);
+                sentItems += 1;
             }
 
             // End the stream
