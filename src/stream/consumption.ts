@@ -148,7 +148,9 @@ export class StreamConsumption<T, E> extends StreamBase {
     toReadable(kind: "raw" | "object", options?: { atoms?: boolean }): Readable;
 
     /**
-     * Produce a readable node stream with the raw values from the stream.
+     * Produce a readable node stream with the raw values from the stream
+     * @note the stream must only contain atoms of type `string` or `Buffer`. If not, a
+     *       stream error will be emitted.
      *
      * @param options.single - Whether to emit only the first atom
      *
