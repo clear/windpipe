@@ -145,7 +145,7 @@ export class StreamConsumption<T, E> extends StreamBase {
      * @see {@link Stream#serialize} if the stream values should be serialized to json
      * @group Consumption
      */
-    toReadable(kind: "raw" | "object", options?: { single?: boolean; atoms?: boolean }): Readable;
+    toReadable(kind: "raw" | "object", options?: { atoms?: boolean }): Readable;
 
     /**
      * Produce a readable node stream with the raw values from the stream.
@@ -155,19 +155,19 @@ export class StreamConsumption<T, E> extends StreamBase {
      * @see {@link Stream#serialize} if the stream values should be serialized to json
      * @group Consumption
      */
-    toReadable(kind: "raw", options?: { single?: boolean }): Readable;
+    toReadable(kind: "raw"): Readable;
 
     /**
-     * Produce a readable node stream with the values from the stream
+     * Produce a readable node stream in object mode with the values from the stream
      *
-     * @param options.single - Whether to emit only the first atom
      * @param options.atoms - By default, only `ok` values are emitted, however enabling this
      * will emit all values.
      *
+     * @note When not using `options.atoms`, any `null` atom values will be skipped when piping to the readable stream
      * @see {@link Stream#serialize} if the stream values should be serialized to json
      * @group Consumption
      */
-    toReadable(kind: "object", options?: { single?: boolean; atoms?: boolean }): Readable;
+    toReadable(kind: "object", options?: { atoms?: boolean }): Readable;
 
     toReadable(
         kind: "raw" | "object",
@@ -181,20 +181,10 @@ export class StreamConsumption<T, E> extends StreamBase {
 
         // Spin off asynchronously so that the stream can be immediately returned
         (async () => {
-            let sentItems = 0;
-
             for await (const atom of this) {
                 // Determine whether non-ok values should be filtered out
                 if (options?.atoms !== true && !isOk(atom)) {
                     continue;
-                }
-
-                // Monitor for multiple values being sent when only one is desired
-                if (sentItems > 0 && options?.single) {
-                    console.warn(
-                        "indicated that stream would emit a single value, however multiple were emitted (ignoring)",
-                    );
-                    break;
                 }
 
                 // monitor for non raw values when not using object mode
@@ -202,18 +192,22 @@ export class StreamConsumption<T, E> extends StreamBase {
                     kind === "raw" &&
                     !(typeof atom.value === "string" || atom.value instanceof Buffer)
                 ) {
-                    s.emit(
-                        "error",
-                        new Error(
-                            `Stream indicated it would emit raw values but emitted a '${typeof atom.value}' object`,
-                        ),
-                    );
+                    const message = `Stream indicated it would emit raw values but emitted a '${typeof atom.value}' object`;
+                    console.error(message);
+                    s.emit("error", new Error(message));
                     break;
+                }
+
+                // Show a warning if any atom value is null
+                if (!options?.atoms && atom.value === null) {
+                    console.warn(
+                        "Stream attempted to emit a `null` value in object mode which would have ended the stream early. (Skipping)",
+                    );
+                    continue;
                 }
 
                 // Emit atom or atom value
                 s.push(options?.atoms ? atom : atom.value);
-                sentItems += 1;
             }
 
             // End the stream

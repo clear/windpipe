@@ -84,16 +84,6 @@ describe.concurrent("stream consumption", () => {
             expect(values).to.deep.equal([1, 2, 3]);
         });
 
-        test("single object value", async ({ expect }) => {
-            expect.assertions(2);
-
-            const stream = $.from([1, 2, 3]).toReadable("object", { single: true });
-            expect(stream).to.be.instanceof(Readable);
-
-            const values = await promisifyStream(stream);
-            expect(values).to.deep.equal([1]);
-        });
-
         test("object atoms", async ({ expect }) => {
             expect.assertions(2);
 
@@ -104,6 +94,15 @@ describe.concurrent("stream consumption", () => {
 
             const values = await promisifyStream(stream);
             expect(values).to.deep.equal([$.ok(1), $.ok(2), $.error(3)]);
+        });
+
+        test("null in object stream", async ({ expect }) => {
+            expect.assertions(2);
+
+            const stream = $.from([1, null, 2, 3]).toReadable("object");
+            expect(stream).to.be.instanceof(Readable);
+            const values = await promisifyStream(stream);
+            expect(values).to.deep.equal([1, 2, 3]);
         });
 
         test("raw values", async ({ expect }) => {
@@ -125,16 +124,6 @@ describe.concurrent("stream consumption", () => {
             // But reading it will emit an error so this should reject
             const streamPromise = promisifyStream(stream);
             expect(streamPromise).rejects.toBeTruthy();
-        });
-
-        test("single raw value", async ({ expect }) => {
-            expect.assertions(2);
-
-            const stream = $.from(["hello", " ", "world"]).toReadable("raw", { single: true });
-
-            expect(stream).to.be.instanceof(Readable);
-            const values = await promisifyStream(stream);
-            expect(values.join("")).to.equal("hello");
         });
     });
 });

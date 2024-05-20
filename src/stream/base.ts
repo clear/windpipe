@@ -184,7 +184,8 @@ export class StreamBase {
         array = [...array];
 
         return Stream.fromNext(async () => {
-            return array.shift() ?? StreamBase.StreamEnd;
+            if (array.length === 0) return StreamBase.StreamEnd;
+            return array.shift()!;
         });
     }
 
