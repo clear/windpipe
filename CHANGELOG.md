@@ -1,5 +1,15 @@
 # windpipe
 
+## 0.9.0
+
+### Minor Changes
+
+- 8db09c4: Implement `.toReadable()` method for streams
+
+### Patch Changes
+
+- b8a8ed7: Fix creating streams from arrays with nullish values
+
 ## 0.8.2
 
 ### Patch Changes
