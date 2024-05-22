@@ -83,6 +83,7 @@ export class StreamConsumption<T, E> extends StreamBase {
      * @param options.atoms - By default, only `ok` values are serialised, however enabling this
      * will serialise all values.
      *
+     * @see {@link Stream#toReadable} if serialisation is not required
      * @group Consumption
      */
     serialise(options?: { single?: boolean; atoms?: boolean }): Readable {
@@ -125,6 +126,90 @@ export class StreamConsumption<T, E> extends StreamBase {
 
             if (options?.single !== true) {
                 s.push("]");
+            }
+
+            // End the stream
+            s.push(null);
+        })();
+
+        return s;
+    }
+
+    /**
+     * Produce a readable node stream with the values from the stream.
+     *
+     * @param kind - What kind of readable stream to produce. When "raw" only strings and buffers can be emitted on the stream. Use "object" to preserve
+     * objects in the readable stream. Note that object values are not serialised, they are emitted as objects.
+     * @param options - Options for configuring how atoms are output on the stream
+     *
+     * @see {@link Stream#serialize} if the stream values should be serialized to json
+     * @group Consumption
+     */
+    toReadable(kind: "raw" | "object", options?: { atoms?: boolean }): Readable;
+
+    /**
+     * Produce a readable node stream with the raw values from the stream
+     * @note the stream must only contain atoms of type `string` or `Buffer`. If not, a
+     *       stream error will be emitted.
+     *
+     * @param options.single - Whether to emit only the first atom
+     *
+     * @see {@link Stream#serialize} if the stream values should be serialized to json
+     * @group Consumption
+     */
+    toReadable(kind: "raw"): Readable;
+
+    /**
+     * Produce a readable node stream in object mode with the values from the stream
+     *
+     * @param options.atoms - By default, only `ok` values are emitted, however enabling this
+     * will emit all values.
+     *
+     * @note When not using `options.atoms`, any `null` atom values will be skipped when piping to the readable stream
+     * @see {@link Stream#serialize} if the stream values should be serialized to json
+     * @group Consumption
+     */
+    toReadable(kind: "object", options?: { atoms?: boolean }): Readable;
+
+    toReadable(
+        kind: "raw" | "object",
+        options: { single?: boolean; atoms?: boolean } = {},
+    ): Readable {
+        // Set up a new readable stream that does nothing
+        const s = new Readable({
+            read() {},
+            objectMode: kind === "object",
+        });
+
+        // Spin off asynchronously so that the stream can be immediately returned
+        (async () => {
+            for await (const atom of this) {
+                // Determine whether non-ok values should be filtered out
+                if (options?.atoms !== true && !isOk(atom)) {
+                    continue;
+                }
+
+                // monitor for non raw values when not using object mode
+                if (
+                    kind === "raw" &&
+                    !(typeof atom.value === "string" || atom.value instanceof Buffer)
+                ) {
+                    const message = `Stream indicated it would emit raw values but emitted a '${typeof atom.value}' object`;
+                    console.error(message);
+                    s.emit("error", new Error(message));
+                    break;
+                }
+
+                // Show a warning if any atom value is null
+                if (!options?.atoms && atom.value === null) {
+                    console.warn(
+                        "Stream attempted to emit a `null` value in object mode which would have ended the stream early. (Skipping)",
+                    );
+                    continue;
+                }
+
+                // Emit atom or atom value
+                s.push(options?.atoms ? atom : atom.value);
             }
 
             // End the stream

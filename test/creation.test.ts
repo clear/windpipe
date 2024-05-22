@@ -70,6 +70,18 @@ describe.concurrent("stream creation", () => {
             expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3)]);
         });
 
+        test("array with nullish values", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.fromArray([1, null, undefined]);
+
+            expect(await s.toArray({ atoms: true })).toEqual([
+                $.ok(1),
+                $.ok(null),
+                $.ok(undefined),
+            ]);
+        });
+
         test("don't modify original array", async ({ expect }) => {
             expect.assertions(2);
 
