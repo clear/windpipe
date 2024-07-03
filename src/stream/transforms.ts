@@ -328,11 +328,13 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
      */
     bufferedMap<U>(
         cb: (value: T) => MaybePromise<MaybeAtom<U, E>>,
-        options?: { delay?: number },
+        options?: { delay?: number; maxBufferSize?: number; maxBufferPeriod?: number },
     ): Stream<U, E> {
         const trace = this.trace("bufferedMap");
 
-        let signal = newSignal();
+        let itemReadySignal = newSignal();
+        let bufferPulledSignal = newSignal();
+        let lastPull = Date.now();
         let end = false;
 
         // Buffer all of the pending map results
@@ -351,12 +353,20 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                 }
 
                 // Trigger and rotate the signal, so that any pending stream consumers can continue
-                signal.done();
-                signal = newSignal();
+                itemReadySignal.done();
+                itemReadySignal = newSignal();
 
                 // Optionally delay re-polling, to prevent spamming the upstream
                 if (options?.delay) {
                     await new Promise((resolve) => setTimeout(resolve, options.delay));
+                }
+
+                // Optionally halt if the buffer is full or if there hasn't been a pull in a while
+                while (
+                    (options?.maxBufferSize && buffer.length >= options?.maxBufferSize) ||
+                    (options?.maxBufferPeriod && Date.now() - lastPull >= options?.maxBufferPeriod)
+                ) {
+                    await bufferPulledSignal;
                 }
             }
 
@@ -374,13 +384,19 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                         return Stream.StreamEnd;
                     }
 
-                    await signal;
+                    await itemReadySignal;
                 }
 
                 value = buffer.shift();
             }
 
-            return await value;
+            const v = await value;
+
+            lastPull = Date.now();
+            bufferPulledSignal.done();
+            bufferPulledSignal = newSignal();
+
+            return v;
         });
     }
 }
