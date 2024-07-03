@@ -61,3 +61,24 @@ export function createNodeCallback<T, E>(): [Promise<Atom<T, E>>, (error: E, val
     // Return a tuple of the promise and next function
     return [promise, next];
 }
+
+export type Signal = Promise<void> & { done: () => void };
+
+/**
+ * Create a new 'signal', which is just a Promise that has the `resolve` method exposed on
+ * the promise itself, allowing the Promise to be resolved outside of the callback by
+ * calling `Promise.done()`.
+ */
+export function newSignal(): Signal {
+    let done: () => void;
+
+    // @ts-expect-error building signal object
+    const signal: Signal = new Promise<void>((resolve) => {
+        done = resolve;
+    });
+
+    // @ts-expect-error done assigned in promise initialiser
+    signal.done = done;
+
+    return signal;
+}

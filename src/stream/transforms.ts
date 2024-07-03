@@ -4,7 +4,7 @@ import { handler } from "../handler";
 import { StreamConsumption } from "./consumption";
 import { Readable } from "stream";
 import util from "node:util";
-import type { Truthy, MaybePromise } from "../util";
+import { type Truthy, type MaybePromise, newSignal } from "../util";
 
 export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     /**
@@ -289,6 +289,114 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
 
                 yield atom;
             }
+        });
+    }
+
+    /**
+     * Map over each value in the stream, and apply some callback to it. This differs from `map` as
+     * the upstream is continually pulled, regardless if the downstream is ready for it and whether
+     * the current iteration has complete.
+     *
+     * # Example
+     *
+     * Approximate timelines are shown below. It isn't 100% correct for what's actually happening,
+     * but gives the right idea.
+     *
+     * - `p`: producer (upstream)
+     * - `m`: map operation (asynchronous)
+     *
+     * ## Map
+     *
+     * ```
+     *  0ms       10ms      20ms      30ms
+     *  |---------|---------|---------|---------|
+     *  |<-- p -->|<-- m -->|         |         |
+     *  |         |         |<-- p -->|<-- m -->|
+     * ```
+     *
+     * ## Buffered Map
+     *
+     * ```
+     *  0ms       10ms      20ms      30ms
+     *  |---------|---------|---------|---------|
+     *  |<-- p -->|<-- m -->|         |         |
+     *  |         |<-- p -->|<-- m -->|         |
+     *  |         |         |<-- p -->|<-- m -->|
+     * ```
+     *
+     * @group Transform
+     */
+    bufferedMap<U>(
+        cb: (value: T) => MaybePromise<MaybeAtom<U, E>>,
+        options?: { delay?: number; maxBufferSize?: number; maxBufferPeriod?: number },
+    ): Stream<U, E> {
+        const trace = this.trace("bufferedMap");
+
+        let itemReadySignal = newSignal();
+        let bufferPulledSignal = newSignal();
+        let lastPull = Date.now();
+        let end = false;
+
+        // Buffer all of the pending map results
+        const buffer: Promise<Atom<U, E>>[] = [];
+
+        // Continually fill up the buffer
+        (async () => {
+            // Continually pull items from the stream
+            for await (const atom of this) {
+                if (isOk(atom)) {
+                    // Pass the value through the callback
+                    buffer.push(handler(() => cb(atom.value), trace));
+                } else {
+                    // Add the atom directly to the buffer
+                    buffer.push(Promise.resolve(atom));
+                }
+
+                // Trigger and rotate the signal, so that any pending stream consumers can continue
+                itemReadySignal.done();
+                itemReadySignal = newSignal();
+
+                // Optionally delay re-polling, to prevent spamming the upstream
+                if (options?.delay) {
+                    await new Promise((resolve) => setTimeout(resolve, options.delay));
+                }
+
+                // Optionally halt if the buffer is full or if there hasn't been a pull in a while
+                while (
+                    (options?.maxBufferSize && buffer.length >= options?.maxBufferSize) ||
+                    (options?.maxBufferPeriod && Date.now() - lastPull >= options?.maxBufferPeriod)
+                ) {
+                    await bufferPulledSignal;
+                }
+            }
+
+            // Once the async iterator is exhausted, indicate that there will be no more items
+            end = true;
+        })();
+
+        // Create the resulting stream by pulling a value from the buffer whenever one is requested
+        return Stream.fromNext(async () => {
+            let value: Promise<Atom<U, E>> | undefined = undefined;
+
+            while (value === undefined) {
+                if (buffer.length === 0) {
+                    if (end) {
+                        return Stream.StreamEnd;
+                    }
+
+                    await itemReadySignal;
+                }
+
+                value = buffer.shift();
+            }
+
+            const v = await value;
+
+            lastPull = Date.now();
+            bufferPulledSignal.done();
+            bufferPulledSignal = newSignal();
+
+            return v;
         });
     }
 }

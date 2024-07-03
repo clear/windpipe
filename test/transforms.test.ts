@@ -1,4 +1,4 @@
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import $ from "../src";
 
 describe.concurrent("stream transforms", () => {
@@ -187,6 +187,129 @@ describe.concurrent("stream transforms", () => {
             const s = $.from([1, $.error("some error"), 2, 3, 4, 5]).drop(2, { atoms: true });
 
             expect(await s.toArray({ atoms: true })).toEqual([$.ok(2), $.ok(3), $.ok(4), $.ok(5)]);
+        });
+    });
+
+    describe.sequential("bufferedMap", () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        function timeout(ms: number) {
+            return new Promise<void>((resolve) => {
+                setTimeout(() => {
+                    resolve();
+                }, ms);
+            });
+        }
+
+        test("multiple values", async ({ expect }) => {
+            expect.assertions(2);
+
+            // Will infinitely produce values
+            const counter = vi.fn();
+
+            let i = 0;
+            const s = $.fromNext(async () => {
+                if (i === 10) {
+                    return $.StreamEnd;
+                }
+
+                return i++;
+            })
+                .bufferedMap(async (n) => {
+                    // Do some slow work
+                    await timeout(10);
+
+                    return n;
+                })
+                .tap(counter)
+                .toArray({ atoms: true });
+
+            await vi.advanceTimersByTimeAsync(50);
+
+            expect(await s).toEqual([
+                $.ok(0),
+                $.ok(1),
+                $.ok(2),
+                $.ok(3),
+                $.ok(4),
+                $.ok(5),
+                $.ok(6),
+                $.ok(7),
+                $.ok(8),
+                $.ok(9),
+            ]);
+
+            expect(counter).toBeCalledTimes(10);
+        });
+
+        test("slow producer", async ({ expect }) => {
+            expect.assertions(2);
+
+            // Producer that will never produce a value
+            const producer = vi.fn().mockReturnValue(new Promise(() => {}));
+            const counter = vi.fn();
+
+            const s = $.fromNext(producer).bufferedMap(counter);
+
+            // Give some time for everything to spin
+            vi.waitFor(() => s.exhaust(), 50);
+
+            expect(producer).toBeCalledTimes(1);
+            expect(counter).toBeCalledTimes(0);
+        });
+
+        test("slow producer, slow operation", async ({ expect }) => {
+            expect.assertions(15);
+
+            const producer = vi.fn(async () => {
+                await timeout(10);
+                return i++;
+            });
+            const mapper = vi.fn(async (n) => {
+                await timeout(20);
+
+                return n;
+            });
+            const counter = vi.fn();
+
+            let i = 0;
+
+            $.fromNext(producer).bufferedMap(mapper).tap(counter).exhaust();
+
+            // 9ms, producer should only be called once
+            await vi.advanceTimersByTimeAsync(9);
+            expect(producer).toHaveBeenCalledTimes(1);
+            expect(mapper).toHaveBeenCalledTimes(0);
+            expect(counter).toHaveBeenCalledTimes(0);
+
+            // 10ms, producer output value, mapper begins
+            await vi.advanceTimersByTimeAsync(1);
+            expect(producer).toHaveBeenCalledTimes(2);
+            expect(mapper).toHaveBeenCalledTimes(1);
+            expect(counter).toHaveBeenCalledTimes(0);
+
+            // 20ms, producer output another value, another mapper begins
+            await vi.advanceTimersByTimeAsync(10);
+            expect(producer).toHaveBeenCalledTimes(3);
+            expect(mapper).toHaveBeenCalledTimes(2);
+            expect(counter).toHaveBeenCalledTimes(0);
+
+            // 30ms, producer output another value, another mapper begins, first mapper finish
+            await vi.advanceTimersByTimeAsync(10);
+            expect(producer).toHaveBeenCalledTimes(4);
+            expect(mapper).toHaveBeenCalledTimes(3);
+            expect(counter).toHaveBeenCalledTimes(1);
+
+            // 40ms, producer output another value, another mapper begins, second mapper finish
+            await vi.advanceTimersByTimeAsync(10);
+            expect(producer).toHaveBeenCalledTimes(5);
+            expect(mapper).toHaveBeenCalledTimes(4);
+            expect(counter).toHaveBeenCalledTimes(2);
         });
     });
 });
