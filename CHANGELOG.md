@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.9.1
+
+### Patch Changes
+
+- e050124: create `bufferedMap` operator
+
 ## 0.9.0
 
 ### Minor Changes
