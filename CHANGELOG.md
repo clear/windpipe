@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.9.3
+
+### Patch Changes
+
+- d9dcc4e: fix: add timeout with `n` option for buffer
+
 ## 0.9.2
 
 ### Patch Changes
