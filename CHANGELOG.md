@@ -1,5 +1,13 @@
 # windpipe
 
+## 0.9.2
+
+### Patch Changes
+
+- b293d9c: `batch` operator
+- 784adb4: fix: continue emitting stream items after encountering non-raw item on raw stream
+- 87515b3: fix: emit known and unknown errors onto node stream
+
 ## 0.9.1
 
 ### Patch Changes
