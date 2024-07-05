@@ -416,5 +416,18 @@ describe("stream transforms", () => {
             expect(mapper).toHaveBeenCalledTimes(2);
             expect(mapper).toHaveBeenNthCalledWith(2, [4, 5]);
         });
+
+        test("with bucket", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = await $.from([1, 2, 3, 4, 5, 6])
+                .batch({ n: 2, byBucket: (n) => (n % 2 === 0 ? "even" : "odd") })
+                .toArray();
+
+            expect(s).toEqual([
+                [1, 3],
+                [2, 4],
+            ]);
+        });
     });
 });
