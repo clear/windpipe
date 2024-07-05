@@ -402,5 +402,19 @@ describe("stream transforms", () => {
             expect(mapper).toHaveBeenCalledTimes(2);
             expect(mapper).toHaveBeenNthCalledWith(2, []);
         });
+
+        test("n with timeout", async ({ expect }) => {
+            const mapper = vi.fn();
+
+            $.from([1, 2, 3, 4, 5]).batch({ n: 3, timeout: 100 }).map(mapper).exhaust();
+
+            await vi.advanceTimersByTimeAsync(50);
+            expect(mapper).toHaveBeenCalledTimes(1);
+            expect(mapper).toHaveBeenNthCalledWith(1, [1, 2, 3]);
+
+            await vi.advanceTimersByTimeAsync(50);
+            expect(mapper).toHaveBeenCalledTimes(2);
+            expect(mapper).toHaveBeenNthCalledWith(2, [4, 5]);
+        });
     });
 });

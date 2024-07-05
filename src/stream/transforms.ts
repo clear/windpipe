@@ -411,11 +411,12 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
      * @param options.yieldEmpty - If `timeout` is reached and no items have been emitted on the
      * stream, still emit an empty array.
      */
-    batch(
-        options:
-            | { n: number; yieldRemaining?: boolean }
-            | { timeout: number; yieldEmpty?: boolean },
-    ): Stream<T[], E> {
+    batch(options: {
+        n?: number;
+        timeout?: number;
+        yieldRemaining?: boolean;
+        yieldEmpty?: boolean;
+    }): Stream<T[], E> {
         return this.consume(async function* (it) {
             const atoms = it[Symbol.asyncIterator]();
 
@@ -480,7 +481,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                     (result === "timeout" &&
                         "timeout" in options &&
                         (batch.length > 0 || options.yieldEmpty)) ||
-                    ("n" in options && batch.length >= options.n)
+                    (options?.n && batch.length >= options.n)
                 ) {
                     const end = ("n" in options && options?.n) || batch.length;
                     yield ok<T[], E>(batch.splice(0, end));
@@ -497,7 +498,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
 
                 // Yield the rest of the batch
                 yield ok(batch);
-            } else if ("n" in options) {
+            } else if (options?.n) {
                 while (batch.length >= options.n) {
                     yield ok(batch.splice(0, options.n));
                 }
