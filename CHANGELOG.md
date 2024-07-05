@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.9.4
+
+### Patch Changes
+
+- 2370529: feat: allow batching by bucket
+
 ## 0.9.3
 
 ### Patch Changes
