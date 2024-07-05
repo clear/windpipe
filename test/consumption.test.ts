@@ -137,6 +137,63 @@ describe.concurrent("stream consumption", () => {
             expect(errors).toHaveLength(1);
         });
 
+        test("propagate known errors into raw readable stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const stream = promisifyStream(
+                $.from([$.ok("a"), $.ok("b"), $.error("some error"), $.ok("c")]).toReadable("raw"),
+            );
+
+            expect(stream).rejects.toEqual("some error");
+        });
+
+        test("propagate known errors into object readable stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const stream = promisifyStream(
+                $.from([$.ok("a"), $.ok("b"), $.error("some error"), $.ok("c")]).toReadable(
+                    "object",
+                ),
+            );
+
+            expect(stream).rejects.toEqual("some error");
+        });
+
+        test("propagate multiple errors into readable stream", async ({ expect }) => {
+            expect.assertions(2);
+
+            const stream = $.from([
+                $.ok("a"),
+                $.error("an error"),
+                $.ok("b"),
+                $.error("some error"),
+                $.ok("c"),
+            ]).toReadable("object");
+
+            // Monitor the stream
+            const { data, errors } = await emptyStream(stream);
+
+            expect(errors).toEqual(["an error", "some error"]);
+            expect(data).toEqual(["a", "b", "c"]);
+        });
+
+        test("propagate known and unknown errors", async ({ expect }) => {
+            expect.assertions(2);
+
+            const stream = $.from([
+                $.ok("a"),
+                $.error("an error"),
+                $.ok("b"),
+                $.unknown("unknown error", []),
+                $.ok("c"),
+            ]).toReadable("object");
+
+            // Monitor the stream
+            const { data, errors } = await emptyStream(stream);
+
+            expect(errors).toEqual(["an error", "unknown error"]);
+            expect(data).toEqual(["a", "b", "c"]);
+        });
     });
 });
 
