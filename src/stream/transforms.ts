@@ -399,4 +399,113 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
             return v;
         });
     }
+
+    /**
+     * Batch items together on the stream and emit them as an array. The batch can be over some
+     * size, or can be over a period of time.
+     *
+     * @param options.n - Batch up to `n` items (activates batching by count)
+     * @param options.yeildRemaining - If the end of the stream is encountered and there are less
+     * than `n` items buffered, yield them anyway
+     * @param options.timeout - Batch for `timeout` milliseconds (activates batching by timeout)
+     * @param options.yieldEmpty - If `timeout` is reached and no items have been emitted on the
+     * stream, still emit an empty array.
+     */
+    batch(
+        options:
+            | { n: number; yieldRemaining?: boolean }
+            | { timeout: number; yieldEmpty?: boolean },
+    ): Stream<T[], E> {
+        return this.consume(async function* (it) {
+            const atoms = it[Symbol.asyncIterator]();
+
+            /**
+             * Create a promise that will resolve after the specified timeout period. If no timeout
+             * is provided then it will never resolve.
+             */
+            function newHeartbeat() {
+                return new Promise<"timeout">((resolve) => {
+                    if ("timeout" in options) {
+                        setTimeout(() => {
+                            resolve("timeout" as const);
+                        }, options.timeout);
+                    }
+                });
+            }
+
+            // Define the promises outside of the loop, so we can re-use them without loosing the
+            // previous instance.
+            let nextAtom = atoms.next();
+            let heartbeat = newHeartbeat();
+
+            const batch: T[] = [];
+
+            let end = false;
+
+            while (!end) {
+                if (batch.length > 1000) {
+                    // Producer may not be I/O bound, yield to the event loop to give other things a
+                    // chance to run.
+                    await new Promise((resolve) => {
+                        setTimeout(resolve, 0);
+                    });
+                }
+
+                // See if an atom is ready, or if we time out
+                const result = await Promise.race([heartbeat, nextAtom]);
+
+                if (typeof result === "object" && "value" in result) {
+                    // Atom was ready, process it (TypeScript types are incorrect)
+                    const atom = result.value as Atom<T, E> | undefined;
+
+                    if (atom) {
+                        if (isOk(atom)) {
+                            batch.push(atom.value);
+                        } else {
+                            // Immediately yield any errors
+                            yield atom;
+                        }
+                    }
+
+                    // Set up the next promise
+                    nextAtom = atoms.next();
+
+                    // Iterator is complete, stop the loop
+                    if (result.done) {
+                        end = true;
+                    }
+                }
+
+                if (
+                    (result === "timeout" &&
+                        "timeout" in options &&
+                        (batch.length > 0 || options.yieldEmpty)) ||
+                    ("n" in options && batch.length >= options.n)
+                ) {
+                    const end = ("n" in options && options?.n) || batch.length;
+                    yield ok<T[], E>(batch.splice(0, end));
+                }
+
+                if (result === "timeout") {
+                    heartbeat = newHeartbeat();
+                }
+            }
+
+            if ("timeout" in options && (batch.length > 0 || options.yieldEmpty)) {
+                // Wait for heartbeat to finish
+                await heartbeat;
+
+                // Yield the rest of the batch
+                yield ok(batch);
+            } else if ("n" in options) {
+                while (batch.length >= options.n) {
+                    yield ok(batch.splice(0, options.n));
+                }
+
+                if (batch.length > 0 && options.yieldRemaining) {
+                    yield ok(batch);
+                }
+            }
+        });
+    }
 }

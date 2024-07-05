@@ -312,4 +312,95 @@ describe.concurrent("stream transforms", () => {
             expect(counter).toHaveBeenCalledTimes(2);
         });
     });
+
+    describe.sequential("batch", () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+
+        afterEach(() => {
+            vi.restoreAllMocks();
+        });
+
+        test("2 items", async ({ expect }) => {
+            expect.assertions(1);
+
+            let i = 0;
+            const s = $.fromNext(() => {
+                return new Promise((res) => res(i++));
+            })
+                .batch({ n: 2 })
+                .take(3);
+
+            expect(await s.toArray({ atoms: true })).toEqual([
+                $.ok([0, 1]),
+                $.ok([2, 3]),
+                $.ok([4, 5]),
+            ]);
+        });
+
+        test("yield remaining true", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([0, 1, 2, 3, 4]).batch({ n: 3, yieldRemaining: true });
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok([0, 1, 2]), $.ok([3, 4])]);
+        });
+
+        test("yield remaining false", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([0, 1, 2, 3, 4]).batch({ n: 3, yieldRemaining: false });
+
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok([0, 1, 2])]);
+        });
+
+        test("with timeout", async ({ expect }) => {
+            expect.assertions(3);
+
+            const mapper = vi.fn();
+
+            let i = 0;
+            $.fromNext(async () => {
+                return i++;
+            })
+                .batch({ timeout: 100 })
+                .map(mapper)
+                .exhaust();
+
+            await vi.advanceTimersByTimeAsync(100);
+            expect(mapper).toHaveBeenCalledTimes(1);
+
+            await vi.advanceTimersByTimeAsync(50);
+            expect(mapper).toHaveBeenCalledTimes(1);
+
+            await vi.advanceTimersByTimeAsync(50);
+            expect(mapper).toHaveBeenCalledTimes(2);
+        });
+
+        test("with timeout yield empty", async ({ expect }) => {
+            expect.assertions(5);
+
+            const mapper = vi.fn();
+
+            $.fromNext(() => {
+                // Promise that will never resolve
+                return new Promise(() => {});
+            })
+                .batch({ timeout: 100, yieldEmpty: true })
+                .map(mapper)
+                .exhaust();
+
+            await vi.advanceTimersByTimeAsync(100);
+            expect(mapper).toHaveBeenCalledTimes(1);
+            expect(mapper).toHaveBeenNthCalledWith(1, []);
+
+            await vi.advanceTimersByTimeAsync(50);
+            expect(mapper).toHaveBeenCalledTimes(1);
+
+            await vi.advanceTimersByTimeAsync(50);
+            expect(mapper).toHaveBeenCalledTimes(2);
+            expect(mapper).toHaveBeenNthCalledWith(2, []);
+        });
+    });
 });

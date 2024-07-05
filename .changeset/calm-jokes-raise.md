@@ -1,0 +1,5 @@
+---
+"windpipe": patch
+---
+
+`batch` operator
