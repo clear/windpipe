@@ -197,7 +197,7 @@ export class StreamConsumption<T, E> extends StreamBase {
                     const message = `Stream indicated it would emit raw values but emitted a '${typeof atom.value}' object`;
                     console.error(message);
                     s.emit("error", new Error(message));
-                    break;
+                    continue;
                 }
 
                 // Show a warning if any atom value is null

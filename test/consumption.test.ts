@@ -125,6 +125,18 @@ describe.concurrent("stream consumption", () => {
             const streamPromise = promisifyStream(stream);
             expect(streamPromise).rejects.toBeTruthy();
         });
+
+        test("continue emitting items after non-raw item in raw stream", async ({ expect }) => {
+            expect.assertions(2);
+
+            const stream = $.from([1, "valid"]).toReadable("raw");
+
+            const { data, errors } = await emptyStream(stream);
+
+            expect(data).toHaveLength(1);
+            expect(errors).toHaveLength(1);
+        });
+
     });
 });
 
@@ -136,4 +148,17 @@ function promisifyStream(stream: Readable): Promise<unknown[]> {
         stream.on("error", reject);
         stream.on("end", () => resolve(data));
     });
+}
+
+async function emptyStream(stream: Readable): Promise<{ data: unknown[]; errors: unknown[] }> {
+    const errors: unknown[] = [];
+    const data: unknown[] = [];
+
+    await new Promise<void>((resolve) => {
+        stream.on("data", (d) => data.push(d));
+        stream.on("error", (e: string) => errors.push(e));
+        stream.on("end", () => resolve());
+    });
+
+    return { data, errors };
 }
