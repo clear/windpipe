@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import $ from "../src";
 
-describe.concurrent("stream transforms", () => {
-    describe.concurrent("map", () => {
+describe("stream transforms", () => {
+    describe("map", () => {
         test("synchronous value", async ({ expect }) => {
             expect.assertions(1);
 
@@ -56,7 +56,7 @@ describe.concurrent("stream transforms", () => {
         });
     });
 
-    describe.concurrent("collect", () => {
+    describe("collect", () => {
         test("simple stream without errors", async ({ expect }) => {
             expect.assertions(1);
 
@@ -90,7 +90,7 @@ describe.concurrent("stream transforms", () => {
         });
     });
 
-    describe.concurrent("mapError", () => {
+    describe("mapError", () => {
         test("single error", async ({ expect }) => {
             expect.assertions(1);
 
@@ -112,7 +112,7 @@ describe.concurrent("stream transforms", () => {
         });
     });
 
-    describe.concurrent("mapUnknown", () => {
+    describe("mapUnknown", () => {
         test("single unknown", async ({ expect }) => {
             expect.assertions(1);
 
@@ -132,7 +132,7 @@ describe.concurrent("stream transforms", () => {
         });
     });
 
-    describe.concurrent("filter", () => {
+    describe("filter", () => {
         test("synchronous values", async ({ expect }) => {
             expect.assertions(1);
 
@@ -156,7 +156,7 @@ describe.concurrent("stream transforms", () => {
         });
     });
 
-    describe.concurrent("drop", () => {
+    describe("drop", () => {
         test("multiple values", async ({ expect }) => {
             expect.assertions(1);
 
@@ -190,7 +190,7 @@ describe.concurrent("stream transforms", () => {
         });
     });
 
-    describe.sequential("bufferedMap", () => {
+    describe("bufferedMap", () => {
         beforeEach(() => {
             vi.useFakeTimers();
         });
@@ -254,10 +254,10 @@ describe.concurrent("stream transforms", () => {
             const producer = vi.fn().mockReturnValue(new Promise(() => {}));
             const counter = vi.fn();
 
-            const s = $.fromNext(producer).bufferedMap(counter);
+            $.fromNext(producer).bufferedMap(counter).exhaust();
 
             // Give some time for everything to spin
-            vi.waitFor(() => s.exhaust(), 50);
+            await vi.advanceTimersByTimeAsync(50);
 
             expect(producer).toBeCalledTimes(1);
             expect(counter).toBeCalledTimes(0);
