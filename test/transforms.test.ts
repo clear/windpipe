@@ -429,5 +429,34 @@ describe("stream transforms", () => {
                 [2, 4],
             ]);
         });
+
+        test("timeout bucket", async ({ expect }) => {
+            const mapper = vi.fn();
+
+            $.from([1, 2, 3, 4, 5, 6])
+                .batch({ timeout: 100, byBucket: (n) => (n % 2 === 0 ? "even" : "odd") })
+                .map(mapper)
+                .exhaust();
+
+            await vi.advanceTimersByTimeAsync(100);
+            expect(mapper).toHaveBeenCalledTimes(2);
+            expect(mapper).toHaveBeenNthCalledWith(1, [1, 3, 5]);
+            expect(mapper).toHaveBeenNthCalledWith(2, [2, 4, 6]);
+        });
+
+        test("timeout bucket no items", async ({ expect }) => {
+            const mapper = vi.fn();
+
+            $.fromNext(() => new Promise<number>(() => {}))
+                .batch({ timeout: 100, byBucket: (n) => (n % 2 === 0 ? "even" : "odd") })
+                .map(mapper)
+                .exhaust();
+
+            await vi.advanceTimersByTimeAsync(100);
+            expect(mapper).toHaveBeenCalledTimes(0);
+
+            await vi.advanceTimersByTimeAsync(100);
+            expect(mapper).toHaveBeenCalledTimes(0);
+        });
     });
 });

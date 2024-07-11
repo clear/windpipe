@@ -506,7 +506,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                         );
 
                         for (const batch of ready) {
-                            const items = batch.splice(0, options?.n ?? -1);
+                            const items = batch.splice(0, options?.n ?? batch.length);
                             yield ok<T[], E>(items);
                             totalBatchSize -= items.length;
                         }
