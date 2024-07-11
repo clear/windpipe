@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.9.5
+
+### Patch Changes
+
+- a87c801: fix: incorrect splicing when generating batch
+
 ## 0.9.4
 
 ### Patch Changes
