@@ -16,7 +16,7 @@ describe.concurrent("error handling", () => {
 
         expect(await s.toArray({ atoms: true })).toEqual([
             $.ok(1),
-            $.unknown(new Error("bad number"), ["map"]),
+            $.exception(new Error("bad number"), ["map"]),
             $.ok(3),
         ]);
     });
@@ -36,7 +36,7 @@ describe.concurrent("error handling", () => {
 
         expect(await s.toArray({ atoms: true })).toEqual([
             $.ok(1),
-            $.unknown(new Error("bad number"), ["map"]),
+            $.exception(new Error("bad number"), ["map"]),
             $.ok(3),
         ]);
     });
@@ -56,7 +56,7 @@ describe.concurrent("error handling", () => {
             .filter((n) => n % 2 === 0);
 
         expect(await s.toArray({ atoms: true })).toEqual([
-            $.unknown(new Error("bad number"), ["map"]),
+            $.exception(new Error("bad number"), ["map"]),
             $.ok(4),
         ]);
     });
@@ -84,7 +84,7 @@ describe.concurrent("error handling", () => {
             .filter((n) => n % 2 === 0);
 
         expect(await s.toArray({ atoms: true })).toEqual([
-            $.unknown(new Error("bad number"), ["filter", "map", "map"]),
+            $.exception(new Error("bad number"), ["filter", "map", "map"]),
             $.ok(30),
             $.ok(4),
             $.ok(50),

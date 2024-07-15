@@ -1,5 +1,5 @@
 import { Stream } from ".";
-import { isError, isOk, type Atom, isUnknown } from "../atom";
+import { isError, isOk, type Atom, isException } from "../atom";
 import { run } from "../handler";
 import { type CallbackOrStream, type MaybePromise, exhaust } from "../util";
 import { StreamTransforms } from "./transforms";
@@ -107,22 +107,32 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     }
 
     /**
-     * Maps over each unknown error in the stream, producing a new stream from it, and flatten all
+     * Maps over each exception in the stream, producing a new stream from it, and flatten all
      * the value streams together.
      *
      * @group Higher Order
      */
-    flatMapUnknown(
+    flatMapException(
         cb: (value: unknown, trace: string[]) => MaybePromise<Stream<T, E>>,
     ): Stream<T, E> {
-        const trace = this.trace("flatMapUnknown");
+        const trace = this.trace("flatMapException");
 
         return this.flatMapAtom(
-            (atom) => (isUnknown(atom) ? accept(atom) : reject(atom)),
+            (atom) => (isException(atom) ? accept(atom) : reject(atom)),
             (atom) => {
                 return cb(atom.value, trace);
             },
         );
+    }
+
+    /**
+     * @group Higher Order
+     * @deprecated use `flatMapException` instead
+     */
+    flatMapUnknown(
+        cb: (value: unknown, trace: string[]) => MaybePromise<Stream<T, E>>,
+    ): Stream<T, E> {
+        return this.flatMapException(cb);
     }
 
     /**
@@ -235,7 +245,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     /**
      * Emit items from provided stream if this stream is completely empty.
      *
-     * @note If there are any errors (known or unknown) on the stream, then the new stream won't be
+     * @note If there are any errors or exceptions on the stream, then the new stream won't be
      * consumed.
      *
      * @group Higher Order
@@ -262,7 +272,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
 
     /**
      * Consume the entire stream, and completely replace it with a new stream. This will remove
-     * any errors currently on the stream (both known and unknown).
+     * any errors and exceptions currently on the stream.
      *
      * Equivalent to:
      *

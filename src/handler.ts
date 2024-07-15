@@ -1,11 +1,11 @@
 import {
     normalise,
     ok,
-    unknown,
-    isUnknown,
+    exception,
+    isException,
     type Atom,
     type AtomOk,
-    type AtomUnknown,
+    type AtomException,
     type MaybeAtom,
 } from "./atom";
 import type { MaybePromise } from "./util";
@@ -25,7 +25,7 @@ async function normalisePromise<T>(value: MaybePromise<T>): Promise<T> {
 
 /**
  * Run the given handler, then the returned value will be normalised as an atom and returned. If an
- * unhandled error is thrown during the handler, then it will be caught and returned as an `unknown`
+ * unhandled error is thrown during the handler, then it will be caught and returned as an `exception`
  * atom.
  */
 export async function handler<T, E>(
@@ -34,7 +34,7 @@ export async function handler<T, E>(
 ): Promise<Atom<T, E>> {
     const result = await run(handler, trace);
 
-    if (isUnknown(result)) {
+    if (isException(result)) {
         return result;
     }
 
@@ -43,16 +43,16 @@ export async function handler<T, E>(
 
 /**
  * Run some callback. If it completes successfully, the value will be returned as `AtomOk`. If an
- * error is thrown, it will be caught and returned as an `AtomUnknown`. `AtomError` will never be
+ * error is thrown, it will be caught and returned as an `AtomException`. `AtomError` will never be
  * produced from this helper.
  */
 export async function run<T>(
     cb: () => MaybePromise<T>,
     trace: string[],
-): Promise<AtomOk<T> | AtomUnknown> {
+): Promise<AtomOk<T> | AtomException> {
     try {
         return ok(await normalisePromise(cb())) as AtomOk<T>;
     } catch (e) {
-        return unknown(e, trace) as AtomUnknown;
+        return exception(e, trace) as AtomException;
     }
 }

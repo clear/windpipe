@@ -1,5 +1,5 @@
 import { Stream } from ".";
-import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown, ok } from "../atom";
+import { isOk, isException, type MaybeAtom, type Atom, isError, exception, ok } from "../atom";
 import { handler } from "../handler";
 import { StreamConsumption } from "./consumption";
 import { Readable } from "stream";
@@ -85,22 +85,30 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     }
 
     /**
-     * Map over each unknown in the stream.
+     * Map over each exception in the stream.
      *
      * @group Transform
      */
-    mapUnknown(cb: (error: unknown) => MaybePromise<MaybeAtom<T, E>>): Stream<T, E> {
-        const trace = this.trace("mapUnknown");
+    mapException(cb: (error: unknown) => MaybePromise<MaybeAtom<T, E>>): Stream<T, E> {
+        const trace = this.trace("mapException");
 
         return this.consume(async function* (it) {
             for await (const atom of it) {
-                if (isUnknown(atom)) {
+                if (isException(atom)) {
                     yield await handler(() => cb(atom.value), trace);
                 } else {
                     yield atom;
                 }
             }
         });
+    }
+
+    /**
+     * @group Transform
+     * @deprecated use `mapException` instead
+     */
+    mapUnknown(cb: (error: unknown) => MaybePromise<MaybeAtom<T, E>>): Stream<T, E> {
+        return this.mapException(cb);
     }
 
     /**
@@ -165,7 +173,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                         "non-ok value returned from filter condition",
                     );
                     error.detail = filter;
-                    yield unknown(error, trace);
+                    yield exception(error, trace);
                 }
             }
         });

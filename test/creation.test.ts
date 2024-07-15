@@ -151,7 +151,12 @@ describe.concurrent("stream creation", () => {
         test("next atoms produces atoms", async ({ expect }) => {
             expect.assertions(1);
 
-            const atoms = [$.ok(0), $.error("some error"), $.ok(1), $.unknown("unknown error", [])];
+            const atoms = [
+                $.ok(0),
+                $.error("some error"),
+                $.ok(1),
+                $.exception("unknown error", []),
+            ];
             const s = $.fromNext(async () => {
                 if (atoms.length > 0) {
                     return atoms.shift();
@@ -164,7 +169,7 @@ describe.concurrent("stream creation", () => {
                 $.ok(0),
                 $.error("some error"),
                 $.ok(1),
-                $.unknown("unknown error", []),
+                $.exception("unknown error", []),
             ]);
         });
 
@@ -187,7 +192,7 @@ describe.concurrent("stream creation", () => {
             });
 
             expect(await s.toArray({ atoms: true })).toEqual([
-                $.unknown("some error", []),
+                $.exception("some error", []),
                 $.ok(2),
             ]);
         });

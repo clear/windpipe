@@ -1,4 +1,4 @@
-import { normalise, type Atom, type MaybeAtom, error, unknown } from "../atom";
+import { normalise, type Atom, type MaybeAtom, error, exception } from "../atom";
 import { Stream } from ".";
 import { Readable, Writable } from "stream";
 import { createNodeCallback } from "../util";
@@ -214,8 +214,8 @@ export class StreamBase {
                             this.push(normalise(value));
                         }
                     } catch (e) {
-                        // Promise was rejected, add as an unknown error
-                        this.push(unknown(e, []));
+                        // Promise was rejected, add as an exception
+                        this.push(exception(e, []));
                     }
                 },
             }),
@@ -250,12 +250,20 @@ export class StreamBase {
     }
 
     /**
-     * Create a new stream containing a single unknown atom.
+     * Create a new stream containing a single exception atom.
      *
      * @group Creation
      */
+    static ofException<T, E>(value: unknown): Stream<T, E> {
+        return this.of(exception(value, []));
+    }
+
+    /**
+     * @group Creation
+     * @deprecated use `ofException` instead
+     */
     static ofUnknown<T, E>(value: unknown): Stream<T, E> {
-        return this.of(unknown(value, []));
+        return this.ofException(value);
     }
 
     /**
