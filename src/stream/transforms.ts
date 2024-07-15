@@ -1,5 +1,5 @@
 import { Stream } from ".";
-import { isOk, isUnknown, type MaybeAtom, type Atom, isError, unknown, ok } from "../atom";
+import { isOk, isException, type MaybeAtom, type Atom, isError, exception, ok } from "../atom";
 import { handler } from "../handler";
 import { StreamConsumption } from "./consumption";
 import { Readable } from "stream";
@@ -94,7 +94,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
 
         return this.consume(async function* (it) {
             for await (const atom of it) {
-                if (isUnknown(atom)) {
+                if (isException(atom)) {
                     yield await handler(() => cb(atom.value), trace);
                 } else {
                     yield atom;
@@ -165,7 +165,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                         "non-ok value returned from filter condition",
                     );
                     error.detail = filter;
-                    yield unknown(error, trace);
+                    yield exception(error, trace);
                 }
             }
         });

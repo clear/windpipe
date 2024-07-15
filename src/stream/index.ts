@@ -1,14 +1,14 @@
 import {
     ok,
     error,
-    unknown,
+    exception,
     isOk,
     isError,
-    isUnknown,
+    isException,
     type Atom,
     type AtomOk,
     type AtomError,
-    type AtomUnknown,
+    type AtomException,
 } from "../atom";
 import { HigherOrderStream } from "./higher-order";
 
@@ -44,7 +44,7 @@ export class Stream<T, E> extends HigherOrderStream<T, E> {
      * @group Atom
      */
     static unknown<T, E>(value: unknown, trace: string[]): Atom<T, E> {
-        return unknown(value, trace);
+        return exception(value, trace);
     }
 
     /**
@@ -70,7 +70,7 @@ export class Stream<T, E> extends HigherOrderStream<T, E> {
      *
      * @group Atom
      */
-    static isUnknown<T, E>(atom: Atom<T, E>): atom is AtomUnknown {
-        return isUnknown(atom);
+    static isUnknown<T, E>(atom: Atom<T, E>): atom is AtomException {
+        return isException(atom);
     }
 }

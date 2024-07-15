@@ -1,5 +1,5 @@
 import { Stream } from ".";
-import { isError, isOk, type Atom, isUnknown } from "../atom";
+import { isError, isOk, type Atom, isException } from "../atom";
 import { run } from "../handler";
 import { type CallbackOrStream, type MaybePromise, exhaust } from "../util";
 import { StreamTransforms } from "./transforms";
@@ -118,7 +118,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
         const trace = this.trace("flatMapUnknown");
 
         return this.flatMapAtom(
-            (atom) => (isUnknown(atom) ? accept(atom) : reject(atom)),
+            (atom) => (isException(atom) ? accept(atom) : reject(atom)),
             (atom) => {
                 return cb(atom.value, trace);
             },

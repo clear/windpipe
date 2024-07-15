@@ -1,11 +1,11 @@
 import {
     normalise,
     ok,
-    unknown,
-    isUnknown,
+    exception,
+    isException,
     type Atom,
     type AtomOk,
-    type AtomUnknown,
+    type AtomException,
     type MaybeAtom,
 } from "./atom";
 import type { MaybePromise } from "./util";
@@ -34,7 +34,7 @@ export async function handler<T, E>(
 ): Promise<Atom<T, E>> {
     const result = await run(handler, trace);
 
-    if (isUnknown(result)) {
+    if (isException(result)) {
         return result;
     }
 
@@ -49,10 +49,10 @@ export async function handler<T, E>(
 export async function run<T>(
     cb: () => MaybePromise<T>,
     trace: string[],
-): Promise<AtomOk<T> | AtomUnknown> {
+): Promise<AtomOk<T> | AtomException> {
     try {
         return ok(await normalisePromise(cb())) as AtomOk<T>;
     } catch (e) {
-        return unknown(e, trace) as AtomUnknown;
+        return exception(e, trace) as AtomException;
     }
 }
