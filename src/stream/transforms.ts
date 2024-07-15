@@ -85,12 +85,12 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
     }
 
     /**
-     * Map over each unknown in the stream.
+     * Map over each exception in the stream.
      *
      * @group Transform
      */
-    mapUnknown(cb: (error: unknown) => MaybePromise<MaybeAtom<T, E>>): Stream<T, E> {
-        const trace = this.trace("mapUnknown");
+    mapException(cb: (error: unknown) => MaybePromise<MaybeAtom<T, E>>): Stream<T, E> {
+        const trace = this.trace("mapException");
 
         return this.consume(async function* (it) {
             for await (const atom of it) {
@@ -101,6 +101,14 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                 }
             }
         });
+    }
+
+    /**
+     * @group Transform
+     * @deprecated use `mapException` instead
+     */
+    mapUnknown(cb: (error: unknown) => MaybePromise<MaybeAtom<T, E>>): Stream<T, E> {
+        return this.mapException(cb);
     }
 
     /**

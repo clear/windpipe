@@ -214,7 +214,7 @@ export class StreamBase {
                             this.push(normalise(value));
                         }
                     } catch (e) {
-                        // Promise was rejected, add as an unknown error
+                        // Promise was rejected, add as an exception
                         this.push(exception(e, []));
                     }
                 },
@@ -250,12 +250,20 @@ export class StreamBase {
     }
 
     /**
-     * Create a new stream containing a single unknown atom.
+     * Create a new stream containing a single exception atom.
      *
      * @group Creation
      */
-    static ofUnknown<T, E>(value: unknown): Stream<T, E> {
+    static ofException<T, E>(value: unknown): Stream<T, E> {
         return this.of(exception(value, []));
+    }
+
+    /**
+     * @group Creation
+     * @deprecated use `ofException` instead
+     */
+    static ofUnknown<T, E>(value: unknown): Stream<T, E> {
+        return this.ofException(value);
     }
 
     /**

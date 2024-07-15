@@ -84,9 +84,9 @@ describe("stream transforms", () => {
         test("single unknown", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = $.from([$.unknown(1, []), $.ok(2), $.ok(3)]).collect();
+            const s = $.from([$.exception(1, []), $.ok(2), $.ok(3)]).collect();
 
-            expect(await s.toArray({ atoms: true })).toEqual([$.unknown(1, []), $.ok([2, 3])]);
+            expect(await s.toArray({ atoms: true })).toEqual([$.exception(1, []), $.ok([2, 3])]);
         });
     });
 
@@ -116,7 +116,9 @@ describe("stream transforms", () => {
         test("single unknown", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = $.from([$.unknown(1, []), $.ok(2), $.ok(3)]).mapUnknown((e) => $.error(e));
+            const s = $.from([$.exception(1, []), $.ok(2), $.ok(3)]).mapException((e) =>
+                $.error(e),
+            );
 
             expect(await s.toArray({ atoms: true })).toEqual([$.error(1), $.ok(2), $.ok(3)]);
         });
@@ -124,7 +126,7 @@ describe("stream transforms", () => {
         test("multiple unknown", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = $.from([$.unknown(1, []), $.ok(2), $.unknown(3, [])]).mapUnknown((e) =>
+            const s = $.from([$.exception(1, []), $.ok(2), $.exception(3, [])]).mapException((e) =>
                 $.error(e),
             );
 

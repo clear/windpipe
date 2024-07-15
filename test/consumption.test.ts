@@ -20,7 +20,7 @@ describe.concurrent("stream consumption", () => {
                 $.error("known"),
                 2,
                 3,
-                $.unknown("$.error", []),
+                $.exception("$.error", []),
             ]).toArray();
 
             expect(array).toEqual([1, 2, 3]);
@@ -50,7 +50,7 @@ describe.concurrent("stream consumption", () => {
                 $.error("known"),
                 2,
                 3,
-                $.unknown("$.error", []),
+                $.exception("$.error", []),
             ]).toArray({
                 atoms: true,
             });
@@ -60,7 +60,7 @@ describe.concurrent("stream consumption", () => {
                 $.error("known"),
                 $.ok(2),
                 $.ok(3),
-                $.unknown("$.error", []),
+                $.exception("$.error", []),
             ]);
         });
 
@@ -184,7 +184,7 @@ describe.concurrent("stream consumption", () => {
                 $.ok("a"),
                 $.error("an error"),
                 $.ok("b"),
-                $.unknown("unknown error", []),
+                $.exception("unknown error", []),
                 $.ok("c"),
             ]).toReadable("object");
 

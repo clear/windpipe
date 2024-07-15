@@ -25,7 +25,7 @@ describe.concurrent("higher order streams", () => {
                 $.ok(1),
                 $.error("known error"),
                 $.ok(2),
-                $.unknown("bad error", []),
+                $.exception("bad error", []),
                 $.ok(3),
             ]).flatMap((n) => $.from(new Array(n).fill(n)));
 
@@ -34,7 +34,7 @@ describe.concurrent("higher order streams", () => {
                 $.error("known error"),
                 $.ok(2),
                 $.ok(2),
-                $.unknown("bad error", []),
+                $.exception("bad error", []),
                 $.ok(3),
                 $.ok(3),
                 $.ok(3),
@@ -121,9 +121,9 @@ describe.concurrent("higher order streams", () => {
         test("stream with unknown error", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = $.from([$.unknown("some error", [])]).otherwise($.from([1]));
+            const s = $.from([$.exception("some error", [])]).otherwise($.from([1]));
 
-            expect(await s.toArray({ atoms: true })).toEqual([$.unknown("some error", [])]);
+            expect(await s.toArray({ atoms: true })).toEqual([$.exception("some error", [])]);
         });
     });
 
@@ -198,7 +198,7 @@ describe.concurrent("higher order streams", () => {
 
             expect(await s.toArray({ atoms: true })).toEqual([
                 $.ok(20),
-                $.unknown("Cannot divide by zero!", ["cachedFlatMap"]),
+                $.exception("Cannot divide by zero!", ["cachedFlatMap"]),
                 $.ok(2),
                 $.ok(20),
                 $.ok(20),

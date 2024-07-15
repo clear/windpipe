@@ -39,12 +39,20 @@ export class Stream<T, E> extends HigherOrderStream<T, E> {
     }
 
     /**
-     * Create an `unknown` atom with the provided value.
+     * Create an `exception` atom with the provided value.
      *
      * @group Atom
      */
-    static unknown<T, E>(value: unknown, trace: string[]): Atom<T, E> {
+    static exception<T, E>(value: unknown, trace: string[]): Atom<T, E> {
         return exception(value, trace);
+    }
+
+    /**
+     * @group Atom
+     * @deprecated use `exception` instead
+     */
+    static unknown<T, E>(value: unknown, trace: string[]): Atom<T, E> {
+        return this.exception(value, trace);
     }
 
     /**
@@ -66,11 +74,19 @@ export class Stream<T, E> extends HigherOrderStream<T, E> {
     }
 
     /**
-     * Verify if the provided atom is of the `unknown` variant.
+     * Verify if the provided atom is of the `exception` variant.
      *
      * @group Atom
      */
-    static isUnknown<T, E>(atom: Atom<T, E>): atom is AtomException {
+    static isException<T, E>(atom: Atom<T, E>): atom is AtomException {
         return isException(atom);
+    }
+
+    /**
+     * @group Atom
+     * @deprecated use `isException` instead
+     */
+    static isUnknown<T, E>(atom: Atom<T, E>): atom is AtomException {
+        return this.isException(atom);
     }
 }

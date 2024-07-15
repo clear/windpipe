@@ -5,10 +5,12 @@ export type {
     Atom,
     AtomOk,
     AtomError,
-    AtomException as AtomUnknown,
+    AtomException,
+    AtomUnknown,
     VALUE,
     ERROR,
-    EXCEPTION as UNKNOWN,
+    EXCEPTION,
+    UNKNOWN,
     MaybeAtom,
 } from "./atom";
 

@@ -25,7 +25,7 @@ async function normalisePromise<T>(value: MaybePromise<T>): Promise<T> {
 
 /**
  * Run the given handler, then the returned value will be normalised as an atom and returned. If an
- * unhandled error is thrown during the handler, then it will be caught and returned as an `unknown`
+ * unhandled error is thrown during the handler, then it will be caught and returned as an `exception`
  * atom.
  */
 export async function handler<T, E>(
@@ -43,7 +43,7 @@ export async function handler<T, E>(
 
 /**
  * Run some callback. If it completes successfully, the value will be returned as `AtomOk`. If an
- * error is thrown, it will be caught and returned as an `AtomUnknown`. `AtomError` will never be
+ * error is thrown, it will be caught and returned as an `AtomException`. `AtomError` will never be
  * produced from this helper.
  */
 export async function run<T>(
