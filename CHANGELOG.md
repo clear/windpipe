@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.9.6
+
+### Patch Changes
+
+- 7300858: rename `unknown` to `exception`, and deprecate all calls to `unknown`
+
 ## 0.9.5
 
 ### Patch Changes
