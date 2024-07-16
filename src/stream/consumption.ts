@@ -57,12 +57,13 @@ export class StreamConsumption<T, E> extends StreamBase {
      * Iterate through each atom in the stream, and return them as a single array.
      *
      * @param options.atoms - Return every atom on the stream.
+     * @param options.reject - If an error or exception is encountered, reject the promise with it.
      *
      * @group Consumption
      */
-    async toArray(options?: { atoms: false }): Promise<T[]>;
+    async toArray(options?: { atoms?: false; reject?: boolean }): Promise<T[]>;
     async toArray(options?: { atoms: true }): Promise<Atom<T, E>[]>;
-    async toArray(options?: { atoms?: boolean }): Promise<(Atom<T, E> | T)[]> {
+    async toArray(options?: { atoms?: boolean; reject?: boolean }): Promise<(Atom<T, E> | T)[]> {
         const array: (Atom<T, E> | T)[] = [];
 
         for await (const atom of this) {
@@ -70,6 +71,8 @@ export class StreamConsumption<T, E> extends StreamBase {
                 array.push(atom);
             } else if (isOk(atom)) {
                 array.push(atom.value);
+            } else if (options?.reject) {
+                throw atom.value;
             }
         }
 

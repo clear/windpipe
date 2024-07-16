@@ -71,6 +71,14 @@ describe.concurrent("stream consumption", () => {
 
             expect(array).toEqual([]);
         });
+
+        test("reject when error on stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const arrayPromise = $.from([$.ok(1), $.error("some error")]).toArray({ reject: true });
+
+            expect(arrayPromise).rejects.toThrow("some error");
+        });
     });
 
     describe.concurrent("toReadable", () => {
