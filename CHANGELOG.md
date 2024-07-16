@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.9.8
+
+### Patch Changes
+
+- 2c8238d: fix: buffered map continuing on stream end
+
 ## 0.9.7
 
 ### Patch Changes
