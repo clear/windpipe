@@ -380,6 +380,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
 
             // Once the async iterator is exhausted, indicate that there will be no more items
             end = true;
+            itemReadySignal.done();
         })();
 
         // Create the resulting stream by pulling a value from the buffer whenever one is requested
