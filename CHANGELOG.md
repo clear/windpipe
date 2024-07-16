@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.9.7
+
+### Patch Changes
+
+- 70fe273: feat: reject error atom option for `toArray`
+
 ## 0.9.6
 
 ### Patch Changes
