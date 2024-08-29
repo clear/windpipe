@@ -414,7 +414,7 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
      * size, or can be over a period of time.
      *
      * @param options.n - Batch up to `n` items (activates batching by count)
-     * @param options.yeildRemaining - If the end of the stream is encountered and there are less
+     * @param options.yieldRemaining - If the end of the stream is encountered and there are less
      * than `n` items buffered, yield them anyway
      * @param options.timeout - Batch for `timeout` milliseconds (activates batching by timeout)
      * @param options.yieldEmpty - If `timeout` is reached and no items have been emitted on the
@@ -510,12 +510,12 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                 if (result === "timeout" && "timeout" in options) {
                     if (totalBatchSize > 0) {
                         // Work out which batches are ready
-                        const ready = Object.values(batches).filter(
-                            (batch) => batch.length >= (options?.n ?? 1),
-                        );
+                        const ready = Object.values(batches).filter((batch) => batch.length > 0);
 
                         for (const batch of ready) {
-                            const items = batch.splice(0, options?.n ?? batch.length);
+                            // If `n` in options and `n` <= batch size, use it
+                            const n = Math.min(options?.n ?? batch.length, batch.length);
+                            const items = batch.splice(0, n);
                             yield ok<T[], E>(items);
                             totalBatchSize -= items.length;
                         }
