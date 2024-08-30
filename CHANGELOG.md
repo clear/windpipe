@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.9.9
+
+### Patch Changes
+
+- 8d3b6be: fix: inconsistency with batch yielding
+
 ## 0.9.8
 
 ### Patch Changes
