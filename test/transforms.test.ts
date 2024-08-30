@@ -460,5 +460,75 @@ describe("stream transforms", () => {
             await vi.advanceTimersByTimeAsync(100);
             expect(mapper).toHaveBeenCalledTimes(0);
         });
+
+        describe.only("batch weirdness", () => {
+            test("5 items, n = 10", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = await $.from([1, 2, 3, 4, 5]).batch({ n: 10 }).toArray();
+
+                expect(s).toEqual([]);
+            });
+
+            test("5 items, n = 10, yieldRemaining", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = await $.from([1, 2, 3, 4, 5])
+                    .batch({ n: 10, yieldRemaining: true })
+                    .toArray();
+
+                expect(s).toEqual([[1, 2, 3, 4, 5]]);
+            });
+
+            function createHangingStream() {
+                let i = 0;
+                return $.fromNext(() => {
+                    if (i < 5) {
+                        return Promise.resolve(i++);
+                    }
+
+                    // Hang
+                    return new Promise(() => {});
+                });
+            }
+
+            test("5 items, n = 10, timeout, yieldRemaining, infinite hang", async ({ expect }) => {
+                expect.assertions(1);
+
+                const a = createHangingStream()
+                    .batch({ n: 10, timeout: 5, yieldRemaining: true })
+                    .take(1)
+                    .toArray();
+
+                await vi.advanceTimersByTimeAsync(5);
+                expect(await a).toEqual([[0, 1, 2, 3, 4]]);
+            });
+
+            test("5 items, n = 10, timeout, yieldEmpty, infinite hang", async ({ expect }) => {
+                expect.assertions(1);
+
+                const a = createHangingStream()
+                    .batch({ n: 10, timeout: 5, yieldEmpty: true })
+                    .take(1)
+                    .toArray();
+
+                await vi.advanceTimersByTimeAsync(5);
+                expect(await a).toEqual([[]]);
+            });
+
+            test("5 items, n = 10, timeout, yieldEmpty, yieldRemaining, infinite hang", async ({
+                expect,
+            }) => {
+                expect.assertions(1);
+
+                const a = createHangingStream()
+                    .batch({ n: 10, timeout: 5, yieldRemaining: true, yieldEmpty: true })
+                    .take(2)
+                    .toArray();
+
+                await vi.advanceTimersByTimeAsync(10);
+                expect(await a).toEqual([[0, 1, 2, 3, 4], []]);
+            });
+        });
     });
 });

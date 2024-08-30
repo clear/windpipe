@@ -240,18 +240,22 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
         this.trace("take");
 
         return this.consume(async function* (it) {
+            if (n <= 0) {
+                return;
+            }
+
             let i = 0;
 
             for await (const atom of it) {
-                if (i >= n) {
-                    break;
-                }
-
                 if (isOk(atom) || options?.atoms === true) {
                     yield atom;
                 }
 
                 i++;
+
+                if (i >= n) {
+                    break;
+                }
             }
         });
     }
@@ -508,19 +512,19 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                 }
 
                 if (result === "timeout" && "timeout" in options) {
-                    if (totalBatchSize > 0) {
-                        // Work out which batches are ready
-                        const ready = Object.values(batches).filter(
-                            (batch) => batch.length >= (options?.n ?? 1),
-                        );
+                    // Work out which batches are ready
+                    const ready = Object.values(batches).filter(
+                        (batch) => batch.length >= (options?.n ?? 1) || options?.yieldRemaining,
+                    );
 
+                    if (ready.length === 0 && options?.yieldEmpty) {
+                        yield ok([]);
+                    } else {
                         for (const batch of ready) {
                             const items = batch.splice(0, options?.n ?? batch.length);
                             yield ok<T[], E>(items);
                             totalBatchSize -= items.length;
                         }
-                    } else if (totalBatchSize === 0 && options?.yieldEmpty) {
-                        yield ok([]);
                     }
                 }
 
