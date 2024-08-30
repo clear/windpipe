@@ -461,7 +461,7 @@ describe("stream transforms", () => {
             expect(mapper).toHaveBeenCalledTimes(0);
         });
 
-        describe.only("batch weirdness", () => {
+        describe("batch weirdness", () => {
             test("5 items, n = 10", async ({ expect }) => {
                 expect.assertions(1);
 
