@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.9.10
+
+### Patch Changes
+
+- de16dab: fix batching with timeout and yield-remaining
+
 ## 0.9.9
 
 ### Patch Changes
