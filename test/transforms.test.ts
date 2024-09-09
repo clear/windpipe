@@ -447,6 +447,8 @@ describe("stream transforms", () => {
         });
 
         test("timeout bucket no items", async ({ expect }) => {
+            expect.assertions(2);
+
             const mapper = vi.fn();
 
             $.fromNext(() => new Promise<number>(() => {}))
@@ -459,6 +461,31 @@ describe("stream transforms", () => {
 
             await vi.advanceTimersByTimeAsync(100);
             expect(mapper).toHaveBeenCalledTimes(0);
+        });
+
+        test("yield remaining doesn't incorrectly yield empty", async ({ expect }) => {
+            expect.assertions(3);
+
+            const mapper = vi.fn();
+
+            const testItems = [1, 1, 1, 1];
+            $.fromNext(async () => {
+                if (testItems.length > 0) {
+                    return testItems.shift();
+                }
+
+                return new Promise(() => {});
+            })
+                .batch({ timeout: 100, n: 10, yieldRemaining: true, yieldEmpty: false })
+                .map(mapper)
+                .exhaust();
+
+            await vi.advanceTimersByTimeAsync(100);
+            expect(mapper).toHaveBeenCalledTimes(1);
+            expect(mapper).toHaveBeenNthCalledWith(1, [1, 1, 1, 1]);
+
+            await vi.advanceTimersByTimeAsync(100);
+            expect(mapper).toHaveBeenCalledTimes(1);
         });
 
         describe("batch weirdness", () => {

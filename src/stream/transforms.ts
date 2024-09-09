@@ -517,8 +517,12 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
                         (batch) => batch.length >= (options?.n ?? 1) || options?.yieldRemaining,
                     );
 
-                    if (ready.length === 0 && options?.yieldEmpty) {
-                        yield ok([]);
+                    if (ready.reduce((total, batch) => total + batch.length, 0) === 0) {
+                        if (options?.yieldEmpty) {
+                            // Only yield an empty batch if there are absolutely no items ready to
+                            // be yielded and if the configuration allows it
+                            yield ok([]);
+                        }
                     } else {
                         for (const batch of ready) {
                             const items = batch.splice(0, options?.n ?? batch.length);
