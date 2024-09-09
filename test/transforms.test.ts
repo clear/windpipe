@@ -463,7 +463,7 @@ describe("stream transforms", () => {
             expect(mapper).toHaveBeenCalledTimes(0);
         });
 
-        test("timeout don't yield empty", async ({ expect }) => {
+        test("yield remaining doesn't incorrectly yield empty", async ({ expect }) => {
             expect.assertions(3);
 
             const mapper = vi.fn();
