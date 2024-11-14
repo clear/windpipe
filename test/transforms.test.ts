@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, test, vi } from "vitest";
+import { afterEach, beforeEach, describe, test, vi, type ExpectStatic } from "vitest";
 import $ from "../src";
 
 describe("stream transforms", () => {
@@ -555,6 +555,213 @@ describe("stream transforms", () => {
 
                 await vi.advanceTimersByTimeAsync(10);
                 expect(await a).toEqual([[0, 1, 2, 3, 4], []]);
+            });
+        });
+    });
+
+    describe("onFirst", () => {
+        async function testAtom(
+            expect: ExpectStatic,
+            atom: unknown,
+            atomOption: boolean,
+            spyCalled: boolean,
+        ) {
+            expect.assertions(2);
+
+            const spy = vi.fn();
+
+            const s = await $.from([atom])
+                .onFirst(spy, { atom: atomOption })
+                .toArray({ atoms: true });
+
+            expect(s, "stream should not be altered").toEqual([atom]);
+
+            if (spyCalled) {
+                expect(spy, "callback must be called").toHaveBeenCalledOnce();
+            } else {
+                expect(spy, "callback must not be called").not.toHaveBeenCalled();
+            }
+        }
+
+        describe("single item in stream", () => {
+            test("ok atom", async ({ expect }) => {
+                await testAtom(expect, $.ok(1), true, true);
+            });
+
+            test("error atom", async ({ expect }) => {
+                await testAtom(expect, $.error(1), true, true);
+            });
+
+            test("exception atom", async ({ expect }) => {
+                await testAtom(expect, $.exception(1, []), true, true);
+            });
+        });
+
+        test("multiple items in stream", async ({ expect }) => {
+            expect.assertions(2);
+
+            const spy = vi.fn();
+
+            const s = await $.from([$.error(1), $.ok(2), $.ok(3), $.exception(4, []), $.ok(5)])
+                .onFirst(spy)
+                .toArray({ atoms: true });
+
+            expect(s, "stream should not be altered").toEqual([
+                $.error(1),
+                $.ok(2),
+                $.ok(3),
+                $.exception(4, []),
+                $.ok(5),
+            ]);
+            expect(spy, "callback must be called once").toHaveBeenCalledOnce();
+        });
+
+        test("no items in stream", async ({ expect }) => {
+            expect.assertions(2);
+
+            const spy = vi.fn();
+
+            const s = await $.from([]).onFirst(spy).toArray();
+
+            expect(s, "stream should not be altered").toEqual([]);
+            expect(spy, "callback must not be called").not.toHaveBeenCalled();
+        });
+
+        describe("with atom = false", () => {
+            describe("single item in stream", () => {
+                test("ok atom", async ({ expect }) => {
+                    await testAtom(expect, $.ok(1), false, true);
+                });
+
+                test("error atom", async ({ expect }) => {
+                    await testAtom(expect, $.error(1), false, false);
+                });
+
+                test("exception atom", async ({ expect }) => {
+                    await testAtom(expect, $.exception(1, []), false, false);
+                });
+            });
+
+            test("error, ok", async ({ expect }) => {
+                expect.assertions(4);
+
+                const spy = vi.fn();
+
+                const s = $.from<number, number>([$.error(1), $.ok(2)])
+                    .onFirst(spy, { atom: false })
+                    [Symbol.asyncIterator]();
+
+                expect((await s.next()).value, "error should be emitted first").toEqual($.error(1));
+                expect(spy, "callback shouldn't be triggered on an error").not.toHaveBeenCalled();
+
+                expect((await s.next()).value, "ok value should be emitted next").toEqual($.ok(2));
+                expect(spy, "spy should only be called after the ok atom").toHaveBeenCalledOnce();
+            });
+        });
+    });
+
+    describe("onLast", () => {
+        async function testAtom(
+            expect: ExpectStatic,
+            atom: unknown,
+            atomOption: boolean,
+            spyCalled: boolean,
+        ) {
+            expect.assertions(2);
+
+            const spy = vi.fn();
+
+            const s = await $.from([atom])
+                .onLast(spy, { atom: atomOption })
+                .toArray({ atoms: true });
+
+            expect(s, "stream should not be altered").toEqual([atom]);
+
+            if (spyCalled) {
+                expect(spy, "callback must be called").toHaveBeenCalledOnce();
+            } else {
+                expect(spy, "callback must not be called").not.toHaveBeenCalled();
+            }
+        }
+
+        describe("single item in stream", () => {
+            test("ok atom", async ({ expect }) => {
+                await testAtom(expect, $.ok(1), true, true);
+            });
+
+            test("error atom", async ({ expect }) => {
+                await testAtom(expect, $.error(1), true, true);
+            });
+
+            test("exception atom", async ({ expect }) => {
+                await testAtom(expect, $.exception(1, []), true, true);
+            });
+        });
+
+        test("multiple items in stream", async ({ expect }) => {
+            expect.assertions(2);
+
+            const spy = vi.fn();
+
+            const s = await $.from([$.error(1), $.ok(2), $.ok(3), $.exception(4, []), $.ok(5)])
+                .onLast(spy)
+                .toArray({ atoms: true });
+
+            expect(s, "stream should not be altered").toEqual([
+                $.error(1),
+                $.ok(2),
+                $.ok(3),
+                $.exception(4, []),
+                $.ok(5),
+            ]);
+            expect(spy, "callback must be called once").toHaveBeenCalledOnce();
+        });
+
+        test("no items in stream", async ({ expect }) => {
+            expect.assertions(2);
+
+            const spy = vi.fn();
+
+            const s = await $.from([]).onLast(spy).toArray();
+
+            expect(s, "stream should not be altered").toEqual([]);
+            expect(spy, "callback must not be called").not.toHaveBeenCalled();
+        });
+
+        describe("with atom = false", () => {
+            describe("single item in stream", () => {
+                test("ok atom", async ({ expect }) => {
+                    await testAtom(expect, $.ok(1), false, true);
+                });
+
+                test("error atom", async ({ expect }) => {
+                    await testAtom(expect, $.error(1), false, false);
+                });
+
+                test("exception atom", async ({ expect }) => {
+                    await testAtom(expect, $.exception(1, []), false, false);
+                });
+            });
+
+            test("error, ok", async ({ expect }) => {
+                expect.assertions(4);
+
+                const spy = vi.fn();
+
+                const s = $.from<number, number>([$.ok(1), $.error(2)])
+                    .onLast(spy, { atom: false })
+                    [Symbol.asyncIterator]();
+
+                expect((await s.next()).value, "ok value should be emitted first").toEqual($.ok(1));
+                expect(spy, "callback shouldn't be triggered on an error").not.toHaveBeenCalled();
+
+                expect((await s.next()).value, "error value should be emitted next").toEqual(
+                    $.error(2),
+                );
+                expect(
+                    spy,
+                    "spy should only be called after the stream ends atom",
+                ).toHaveBeenCalledOnce();
             });
         });
     });
