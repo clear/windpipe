@@ -567,4 +567,57 @@ export class StreamTransforms<T, E> extends StreamConsumption<T, E> {
             }
         });
     }
+
+    /**
+     * Run the provided callback after the first atom passes through the stream.
+     *
+     * @param callback - Callback to run.
+     * @param [options = {}]
+     * @param [options.atom = true] - Run on any atom (true by default). Will only run after first
+     * `ok` atom if false.
+     */
+    onFirst(callback: () => void, options: { atom?: boolean } = {}): Stream<T, E> {
+        this.trace("onFirst");
+
+        return this.consume(async function* (it) {
+            let first = false;
+
+            for await (const atom of it) {
+                yield atom;
+
+                if (!first && (options?.atom !== false || Stream.isOk(atom))) {
+                    callback();
+                    first = true;
+                }
+            }
+        });
+    }
+
+    /**
+     * Run the provided callback after the last atom passes through the stream.
+     *
+     * @param callback - Callback to run.
+     * @param [options = {}]
+     * @param [options.atom = true] - Run on any atom (true by default). Will only run after last
+     * `ok` atom if false.
+     */
+    onLast(callback: () => void, options: { atom?: boolean } = {}): Stream<T, E> {
+        this.trace("onLast");
+
+        return this.consume(async function* (it) {
+            let emitted = false;
+
+            for await (const atom of it) {
+                yield atom;
+
+                if (options?.atom !== false || Stream.isOk(atom)) {
+                    emitted = true;
+                }
+            }
+
+            if (emitted) {
+                callback();
+            }
+        });
+    }
 }
