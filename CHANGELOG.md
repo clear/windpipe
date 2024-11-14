@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.10.0
+
+### Minor Changes
+
+- 7c566d2: create `onFirst` and `onLast` operators
+
 ## 0.9.10
 
 ### Patch Changes
