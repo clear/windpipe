@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.11.0
+
+### Minor Changes
+
+- 035cf6a: add `fromPusher` stream creation method
+
 ## 0.10.0
 
 ### Minor Changes
