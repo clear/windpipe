@@ -1,7 +1,7 @@
 import { normalise, type Atom, type MaybeAtom, error, exception } from "../atom";
 import { Stream } from ".";
 import { Readable, Writable } from "stream";
-import { createNodeCallback } from "../util";
+import { createNodeCallback, newSignal } from "../util";
 
 /**
  * Unique type to represent the stream end marker.
@@ -220,6 +220,75 @@ export class StreamBase {
                 },
             }),
         );
+    }
+
+    /**
+     * Create a new stream, and use the provided `push` and `done` methods to add values to it, and
+     * complete the stream.
+     *
+     * - `push`: Adds the provided value to the stream.
+     * - `done`: Indicatest that the stream is done, meaning that any future calls to `push` or
+     *   `done` will be ignored.
+     *
+     * @group Creation
+     */
+    static fromPusher<T, E>(): {
+        stream: Stream<T, E>;
+        push: (value: MaybeAtom<T, E>) => void;
+        done: () => void;
+    } {
+        // Queue of atoms waiting to be pushed.
+        const queue: MaybeAtom<T, E>[] = [];
+
+        // Flag to indicate when the `done` method is called.
+        let done = false;
+
+        // Signal to indicate when some action has taken place.
+        let signal = newSignal();
+
+        async function next(retry = 10) {
+            // If there's something waiting in the queue, immediately produce it.
+            if (queue.length > 0) {
+                return queue.shift()!;
+            }
+
+            // If the stream is complete, immediately return.
+            if (done) {
+                return Stream.StreamEnd;
+            }
+
+            // Prepare a new signal, and wait for it.
+            signal = newSignal();
+            await signal;
+
+            // Protection incase something goes whack with the signal, shouldn't ever be
+            // encountered.
+            if (retry === 0) {
+                console.warn("[windpipe] recursion limit hit whilst waiting for pushed value");
+
+                return Stream.StreamEnd;
+            }
+
+            // Recurse and try again.
+            return next(retry - 1);
+        }
+
+        return {
+            stream: Stream.fromNext<T, E>(next),
+            push: (value: MaybeAtom<T, E>) => {
+                if (done) {
+                    console.error("[windpipe] cannot push after stream is complete");
+                    return;
+                }
+
+                queue.push(value);
+                signal.done();
+            },
+            done: () => {
+                done = true;
+                signal.done();
+            },
+        };
     }
 
     /**

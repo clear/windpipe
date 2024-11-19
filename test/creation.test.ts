@@ -1,8 +1,8 @@
-import { describe, test } from "vitest";
+import { afterEach, beforeEach, describe, test, vi } from "vitest";
 import $ from "../src";
 import { Readable } from "stream";
 
-describe.concurrent("stream creation", () => {
+describe("stream creation", () => {
     describe.concurrent("from promise", () => {
         test("resolving promise to emit value", async ({ expect }) => {
             expect.assertions(1);
@@ -195,6 +195,168 @@ describe.concurrent("stream creation", () => {
                 $.exception("some error", []),
                 $.ok(2),
             ]);
+        });
+    });
+
+    describe("fromPusher", () => {
+        beforeEach(() => {
+            vi.useFakeTimers();
+        });
+        afterEach(() => {
+            vi.useRealTimers();
+        });
+
+        test("push single value", async ({ expect }) => {
+            expect.assertions(1);
+
+            const { stream, push, done } = $.fromPusher();
+
+            // Push a value, then immediately complete
+            push(1);
+            done();
+
+            expect(await stream.toArray({ atoms: true })).toEqual([$.ok(1)]);
+        });
+
+        test("push single value, delayed done", async ({ expect }) => {
+            expect.assertions(1);
+
+            const { stream, push, done } = $.fromPusher();
+
+            const streamPromise = stream.toArray({ atoms: true });
+
+            // Push a value
+            push(1);
+
+            // Complete at a later point
+            setImmediate(() => done());
+
+            await vi.runAllTimersAsync();
+
+            expect(await streamPromise).toEqual([$.ok(1)]);
+        });
+
+        test("push single value, not done", async ({ expect }) => {
+            expect.assertions(2);
+
+            const { stream, push } = $.fromPusher();
+
+            // Push a value.
+            push(1);
+
+            const spy = vi.fn();
+
+            // Ensure the stream never completes.
+            stream
+                .tap(spy)
+                .exhaust()
+                .then(() => expect.fail("promise must not resolve"));
+
+            const WAIT_TIME = 10_000;
+
+            // Block the test until the microtask queue is empty, to make sure there's nothing
+            // else coming down the stream.
+            setTimeout(() => {
+                expect(spy).toBeCalledTimes(1);
+                expect(spy).toBeCalledWith(1);
+            }, WAIT_TIME);
+
+            await vi.advanceTimersByTimeAsync(WAIT_TIME);
+        });
+
+        test("multiple values", async ({ expect }) => {
+            expect.assertions(1);
+
+            const { stream, push, done } = $.fromPusher();
+
+            push(1);
+            push(2);
+            push(3);
+            push(4);
+            done();
+
+            expect(await stream.toArray({ atoms: true })).toEqual([
+                $.ok(1),
+                $.ok(2),
+                $.ok(3),
+                $.ok(4),
+            ]);
+        });
+
+        test("multiple atoms", async ({ expect }) => {
+            expect.assertions(1);
+
+            const { stream, push, done } = $.fromPusher();
+
+            push($.ok(1));
+            push($.ok(2));
+            push($.error(3));
+            push($.exception(4, []));
+            done();
+
+            expect(await stream.toArray({ atoms: true })).toEqual([
+                $.ok(1),
+                $.ok(2),
+                $.error(3),
+                $.exception(4, []),
+            ]);
+        });
+
+        test("no items pushed", async ({ expect }) => {
+            expect.assertions(1);
+
+            const { stream, done } = $.fromPusher();
+
+            done();
+
+            expect(await stream.toArray({ atoms: true })).toEqual([]);
+        });
+
+        test("push items with delay", async ({ expect }) => {
+            expect.assertions(9);
+
+            const spy = vi.fn();
+
+            const { stream, push, done } = $.fromPusher();
+
+            const streamPromise = stream.map(spy).exhaust();
+
+            // Some synchronous values
+            push($.ok(1));
+            push($.ok(2));
+
+            await vi.runAllTimersAsync();
+
+            // Some timeout values
+            setTimeout(() => push($.ok(3)), 1000);
+            setTimeout(() => push($.ok(4)), 2000);
+            setTimeout(() => push($.ok(5)), 3000);
+
+            // Finish the stream
+            setTimeout(() => done(), 4000);
+
+            // Initial assertions
+            expect(spy).toHaveBeenCalledTimes(2);
+            expect(spy).toHaveBeenNthCalledWith(1, 1);
+            expect(spy).toHaveBeenNthCalledWith(2, 2);
+
+            // Async assertions
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(spy).toHaveBeenCalledTimes(3);
+            expect(spy).toHaveBeenNthCalledWith(3, 3);
+
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(spy).toHaveBeenCalledTimes(4);
+            expect(spy).toHaveBeenNthCalledWith(4, 4);
+
+            await vi.advanceTimersByTimeAsync(1000);
+            expect(spy).toHaveBeenCalledTimes(5);
+            expect(spy).toHaveBeenNthCalledWith(5, 5);
+
+            // Run everything else thorugh
+            await vi.runAllTimersAsync();
+
+            await streamPromise;
         });
     });
 });
