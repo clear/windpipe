@@ -3,6 +3,32 @@ import $ from "../src";
 import { Readable } from "node:stream";
 
 describe.concurrent("stream consumption", () => {
+    describe.concurrent("serialise", () => {
+        test("simple number values", async ({ expect }) => {
+            expect.assertions(1);
+
+            const jsonStream = $.from([1, 2, 3]).serialise();
+            const json = await streamToString(jsonStream);
+            expect(json).toEqual("[1,2,3]");
+        });
+
+        test("null values", async ({ expect }) => {
+            expect.assertions(1);
+
+            const jsonStream = $.from([1, null, 3]).serialise();
+            const json = await streamToString(jsonStream);
+            expect(json).toEqual("[1,null,3]");
+        });
+
+        test("skip undefined values", async ({ expect }) => {
+            expect.assertions(1);
+
+            const jsonStream = $.from([1, undefined, 3]).serialise();
+            const json = await streamToString(jsonStream);
+            expect(json).toEqual("[1,3]");
+        });
+    });
+
     describe.concurrent("toArray", () => {
         test("values", async ({ expect }) => {
             expect.assertions(1);
@@ -213,6 +239,12 @@ function promisifyStream(stream: Readable): Promise<unknown[]> {
         stream.on("error", reject);
         stream.on("end", () => resolve(data));
     });
+}
+
+async function streamToString(stream: Readable): Promise<string> {
+    const textDecoder = new TextDecoder();
+    const chunks = await stream.toArray();
+    return chunks.map((chunk) => textDecoder.decode(chunk)).join("");
 }
 
 async function emptyStream(stream: Readable): Promise<{ data: unknown[]; errors: unknown[] }> {
