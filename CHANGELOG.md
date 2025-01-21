@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.11.1
+
+### Patch Changes
+
+- 39221db: Fix json serialisation issue when stream contains undefined values
+
 ## 0.11.0
 
 ### Minor Changes
