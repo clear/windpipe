@@ -86,6 +86,8 @@ export class StreamConsumption<T, E> extends StreamBase {
      * @param options.atoms - By default, only `ok` values are serialised, however enabling this
      * will serialise all values.
      *
+     * @note this will skip `undefined` values as they cannot be serialised.
+     *
      * @see {@link Stream#toReadable} if serialisation is not required
      * @group Consumption
      */
@@ -106,6 +108,11 @@ export class StreamConsumption<T, E> extends StreamBase {
             for await (const atom of this) {
                 // Determine whether non-ok values should be filtered out
                 if (options?.atoms !== true && !isOk(atom)) {
+                    continue;
+                }
+
+                // Skip undefined values (they cannot be serialised into JSON)
+                if (atom.value === undefined) {
                     continue;
                 }
 
