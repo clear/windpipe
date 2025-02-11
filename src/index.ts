@@ -15,6 +15,6 @@ export type {
 } from "./atom";
 
 // Re-export useful utility types
-export type { MaybePromise, Truthy, CallbackOrStream } from "./util";
+export type { MaybePromise, Truthy, CallbackOrStream, NodeCallback } from "./util";
 
 export default Stream;

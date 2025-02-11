@@ -52,7 +52,15 @@ describe("simple transform operations", () => {
 
 describe("sample data operations", () => {
     bench("windpipe", async () => {
-        await Stream.from([
+        await Stream.from<
+            {
+                name: string;
+                id: number;
+                permissions: { read: boolean; write: boolean };
+                balance: number;
+            },
+            string
+        >([
             {
                 name: "test user 1",
                 id: 1,
