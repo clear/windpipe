@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, test, vi } from "vitest";
-import $ from "../src";
+import $, { type NodeCallback } from "../src";
 import { Readable } from "stream";
 
 describe("stream creation", () => {
@@ -100,12 +100,9 @@ describe("stream creation", () => {
          * @param success - Whether the method should succeed or fail.
          * @param cb - Node-style callback to pass error or value to.
          */
-        function someNodeCallback(
-            success: boolean,
-            cb: (error: string | undefined, value?: number) => void,
-        ) {
+        function someNodeCallback(success: boolean, cb: NodeCallback<number, string>) {
             if (success) {
-                cb(undefined, 123);
+                cb(null, 123);
             } else {
                 cb("an error");
             }
@@ -114,7 +111,7 @@ describe("stream creation", () => {
         test("value returned from callback", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = $.fromCallback((next) => {
+            const s = $.fromCallback<number, string>((next) => {
                 someNodeCallback(true, next);
             });
 
@@ -124,7 +121,7 @@ describe("stream creation", () => {
         test("error returned from callback", async ({ expect }) => {
             expect.assertions(1);
 
-            const s = $.fromCallback((next) => {
+            const s = $.fromCallback<number, string>((next) => {
                 someNodeCallback(false, next);
             });
 

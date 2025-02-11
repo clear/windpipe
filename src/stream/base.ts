@@ -1,7 +1,7 @@
 import { normalise, type Atom, type MaybeAtom, error, exception } from "../atom";
 import { Stream } from ".";
 import { Readable, Writable } from "stream";
-import { createNodeCallback, newSignal } from "../util";
+import { createNodeCallback, newSignal, type NodeCallback } from "../util";
 
 /**
  * Unique type to represent the stream end marker.
@@ -47,7 +47,7 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static from<T, E>(
+    static from<T, E = never>(
         value:
             | Promise<MaybeAtom<T, E>>
             | Iterator<MaybeAtom<T, E>>
@@ -97,7 +97,7 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static fromCallback<T, E>(cb: (next: (error: E, value: T) => unknown) => void): Stream<T, E> {
+    static fromCallback<T, E = never>(cb: (next: NodeCallback<T, E>) => void): Stream<T, E> {
         // Set up a next function
         const [promise, next] = createNodeCallback<T, E>();
 
@@ -115,7 +115,7 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static fromPromise<T, E>(promise: Promise<MaybeAtom<T, E>>): Stream<T, E> {
+    static fromPromise<T, E = never>(promise: Promise<MaybeAtom<T, E>>): Stream<T, E> {
         let awaited = false;
 
         return Stream.fromNext(async () => {
@@ -136,7 +136,7 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static fromIterator<T, E>(
+    static fromIterator<T, E = never>(
         iterator: Iterator<MaybeAtom<T, E>> | AsyncIterator<MaybeAtom<T, E>>,
     ): Stream<T, E> {
         return Stream.fromNext(async () => {
@@ -159,7 +159,7 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static fromIterable<T, E>(
+    static fromIterable<T, E = never>(
         iterable: Iterable<MaybeAtom<T, E>> | AsyncIterable<MaybeAtom<T, E>>,
     ): Stream<T, E> {
         if (Symbol.iterator in iterable) {
@@ -179,7 +179,7 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static fromArray<T, E>(array: MaybeAtom<T, E>[]): Stream<T, E> {
+    static fromArray<T, E = never>(array: MaybeAtom<T, E>[]): Stream<T, E> {
         // Clone the array so that shifting elements doesn't impact the original array.
         array = [...array];
 
@@ -197,7 +197,7 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static fromNext<T, E>(next: () => Promise<MaybeAtom<T, E> | StreamEnd>): Stream<T, E> {
+    static fromNext<T, E = never>(next: () => Promise<MaybeAtom<T, E> | StreamEnd>): Stream<T, E> {
         return new Stream(
             new Readable({
                 objectMode: true,
@@ -232,7 +232,7 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static fromPusher<T, E>(): {
+    static fromPusher<T, E = never>(): {
         stream: Stream<T, E>;
         push: (value: MaybeAtom<T, E>) => void;
         done: () => void;
@@ -297,7 +297,7 @@ export class StreamBase {
      *
      * @group Creation
      */
-    static of<T, E>(value: MaybeAtom<T, E>): Stream<T, E> {
+    static of<T, E = never>(value: MaybeAtom<T, E>): Stream<T, E> {
         let consumed = false;
         return Stream.fromNext(async () => {
             if (!consumed) {
@@ -339,7 +339,7 @@ export class StreamBase {
      * Create a stream and corresponding writable Node stream, where any writes to the writable
      * Node stream will be emitted on the returned stream.
      */
-    static writable<T, E>(): { stream: Stream<T, E>; writable: Writable } {
+    static writable<T, E = never>(): { stream: Stream<T, E>; writable: Writable } {
         const buffer: (Atom<T, E> | StreamEnd)[] = [];
         const queue: ((value: Atom<T, E> | StreamEnd) => void)[] = [];
 

@@ -14,6 +14,8 @@ function reject<T>(value: T): { reject: T } {
 
 type FilterResult<A, R> = { accept: A } | { reject: R };
 
+type IfNever<T, A, B> = [T] extends [never] ? A : B;
+
 export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     /**
      * Base implementation of `flat*` operations. In general, all of these methods will filter over
@@ -250,13 +252,13 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
      *
      * @group Higher Order
      */
-    otherwise(cbOrStream: CallbackOrStream<T, E>): Stream<T, E> {
+    otherwise<F extends IfNever<E, unknown, E>>(cbOrStream: CallbackOrStream<T, F>): Stream<T, F> {
         return this.consume(async function* (it) {
             // Count the items being emitted from the iterator
             let count = 0;
             for await (const atom of it) {
                 count += 1;
-                yield atom;
+                yield atom as Atom<T, F>;
             }
 
             // If nothing was emitted, then create the stream and emit it

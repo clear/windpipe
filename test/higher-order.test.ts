@@ -125,6 +125,13 @@ describe.concurrent("higher order streams", () => {
 
             expect(await s.toArray({ atoms: true })).toEqual([$.exception("some error", [])]);
         });
+
+        test("stream with never error", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from<number, never>([]).otherwise($.ofError("some error"));
+            expect(await s.toArray({ atoms: true })).toEqual([$.error("some error")]);
+        });
     });
 
     describe.concurrent("cachedFlatMap", () => {

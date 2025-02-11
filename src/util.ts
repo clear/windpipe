@@ -31,6 +31,8 @@ export async function exhaust(iterable: AsyncIterable<unknown>) {
     }
 }
 
+export type NodeCallback<T, E> = (err: E | null, value?: T) => void;
+
 /**
  * Creates a `next` function and associated promise to promise-ify a node style callback. The
  * `next` function must be passed as the callback to a function, and the resulting error or value
@@ -40,7 +42,7 @@ export async function exhaust(iterable: AsyncIterable<unknown>) {
  * promise, whilst the value of the callback (second parameter) will be emitted as an `Ok` atom on
  * the promise.
  */
-export function createNodeCallback<T, E>(): [Promise<Atom<T, E>>, (error: E, value: T) => void] {
+export function createNodeCallback<T, E>(): [Promise<Atom<T, E>>, NodeCallback<T, E>] {
     // Resolve function to be hoisted out of the promise
     let resolve: (atom: Atom<T, E>) => void;
 
@@ -50,10 +52,10 @@ export function createNodeCallback<T, E>(): [Promise<Atom<T, E>>, (error: E, val
     });
 
     // Create the next callback
-    const next = (err: E, value: T) => {
+    const next: NodeCallback<T, E> = (err, value) => {
         if (err) {
             resolve(Stream.error(err));
-        } else {
+        } else if (value) {
             resolve(Stream.ok(value));
         }
     };
