@@ -63,7 +63,7 @@ export class StreamConsumption<T, E> extends StreamBase {
      * Pull the stream once and remove the first item. This will not consume the rest of the
      * stream.
      *
-     * @note This method can only be called once.
+     * @note This method can only be called once on a given stream.
      */
     single(options: { atom: true; optional: true }): Promise<Atom<T, E> | undefined>;
     single(options: { atom: true; optional?: false }): Promise<Atom<T, E>>;
