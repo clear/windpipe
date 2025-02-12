@@ -1,5 +1,5 @@
 import { describe, test, vi } from "vitest";
-import $, { WindpipeConsumptionError } from "../src";
+import $ from "../src";
 import { Readable } from "node:stream";
 
 describe.concurrent("stream consumption", () => {
@@ -120,7 +120,7 @@ describe.concurrent("stream consumption", () => {
 
                 const s = $.from([]);
 
-                expect(s.single()).rejects.toThrow(WindpipeConsumptionError);
+                expect(s.single()).rejects.toThrow($.WindpipeConsumptionError);
             });
 
             test("with optional false", async ({ expect }) => {
@@ -128,7 +128,7 @@ describe.concurrent("stream consumption", () => {
 
                 const s = $.from([]);
 
-                expect(s.single({ optional: false })).rejects.toThrow(WindpipeConsumptionError);
+                expect(s.single({ optional: false })).rejects.toThrow($.WindpipeConsumptionError);
             });
 
             test("with optional true", async ({ expect }) => {
@@ -144,7 +144,7 @@ describe.concurrent("stream consumption", () => {
 
                 const s = $.from([]);
 
-                expect(s.single({ atom: false })).rejects.toThrow(WindpipeConsumptionError);
+                expect(s.single({ atom: false })).rejects.toThrow($.WindpipeConsumptionError);
             });
 
             test("with atom true", async ({ expect }) => {
@@ -152,7 +152,7 @@ describe.concurrent("stream consumption", () => {
 
                 const s = $.from([]);
 
-                expect(s.single({ atom: true })).rejects.toThrow(WindpipeConsumptionError);
+                expect(s.single({ atom: true })).rejects.toThrow($.WindpipeConsumptionError);
             });
         });
 
