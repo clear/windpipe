@@ -17,6 +17,4 @@ export type {
 // Re-export useful utility types
 export type { MaybePromise, Truthy, CallbackOrStream, NodeCallback } from "./util";
 
-export { WindpipeConsumptionError } from "./stream";
-
 export default Stream;

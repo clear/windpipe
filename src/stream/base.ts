@@ -1,5 +1,5 @@
 import { normalise, type Atom, type MaybeAtom, error, exception } from "../atom";
-import { Stream } from ".";
+import { Stream, WindpipeConsumptionError } from ".";
 import { Readable, Writable } from "stream";
 import { createNodeCallback, newSignal, type NodeCallback } from "../util";
 
@@ -17,6 +17,8 @@ export class StreamBase {
      * Marker for the end of a stream.
      */
     static StreamEnd = Symbol.for("STREAM_END");
+
+    static WindpipeConsumptionError = WindpipeConsumptionError;
 
     constructor(stream: Readable) {
         this.stream = stream;
