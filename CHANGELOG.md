@@ -1,5 +1,17 @@
 # windpipe
 
+## 0.12.0
+
+### Minor Changes
+
+- 9ef31c7: allow different error types when existing stream has `never` error
+- 5d20101: create `single` consumption method
+
+### Patch Changes
+
+- 180b70d: fix: export for WindpipeConsumptionError
+- eb8bdae: re-arrange exports in package.json
+
 ## 0.11.1
 
 ### Patch Changes
