@@ -13,6 +13,7 @@ import {
 import { HigherOrderStream } from "./higher-order";
 
 export type { StreamEnd } from "./base";
+export { WindpipeConsumptionError } from "./consumption";
 
 /**
  * @template T - Type of the 'values' on the stream.

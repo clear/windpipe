@@ -3,6 +3,12 @@ import { isOk, type Atom } from "../atom";
 import { StreamBase } from "./base";
 import { exhaust } from "../util";
 
+export class WindpipeConsumptionError extends Error {
+    static noItems() {
+        return new WindpipeConsumptionError("no items found whilst consuming stream");
+    }
+}
+
 export class StreamConsumption<T, E> extends StreamBase {
     /**
      * Create an iterator that will emit each atom in the stream.
@@ -51,6 +57,47 @@ export class StreamConsumption<T, E> extends StreamBase {
             },
             next,
         };
+    }
+
+    /**
+     * Pull the stream once and remove the first item. This will not consume the rest of the
+     * stream.
+     *
+     * @note This method can only be called once on a given stream.
+     */
+    single(options: { atom: true; optional: true }): Promise<Atom<T, E> | undefined>;
+    single(options: { atom: true; optional?: false }): Promise<Atom<T, E>>;
+    single(options: { atom?: false; optional: true }): Promise<T | undefined>;
+    single(options?: { atom?: false; optional?: false }): Promise<T>;
+    async single({
+        atom = false,
+        optional = false,
+    }: {
+        atom?: boolean;
+        optional?: boolean;
+    } = {}): Promise<T | Atom<T, E> | undefined> {
+        const it = this[Symbol.asyncIterator]();
+
+        const { value, done } = await it.next();
+
+        if (done) {
+            if (optional) {
+                // Fine to return undefined
+                return undefined;
+            }
+
+            throw WindpipeConsumptionError.noItems();
+        }
+
+        if (atom) {
+            return value;
+        }
+
+        if (isOk(value)) {
+            return value.value;
+        }
+
+        throw value.value;
     }
 
     /**

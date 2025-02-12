@@ -1,5 +1,5 @@
-import { describe, test } from "vitest";
-import $ from "../src";
+import { describe, test, vi } from "vitest";
+import $, { WindpipeConsumptionError } from "../src";
 import { Readable } from "node:stream";
 
 describe.concurrent("stream consumption", () => {
@@ -26,6 +26,145 @@ describe.concurrent("stream consumption", () => {
             const jsonStream = $.from([1, undefined, 3]).serialise();
             const json = await streamToString(jsonStream);
             expect(json).toEqual("[1,3]");
+        });
+    });
+
+    describe.concurrent("single", () => {
+        describe("single ok atom", () => {
+            test("with no params", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.ok(1));
+
+                expect(s.single()).resolves.toEqual(1);
+            });
+
+            test("with optional false", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.ok(1));
+
+                expect(s.single({ optional: false })).resolves.toEqual(1);
+            });
+
+            test("with optional true", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.ok(1));
+
+                expect(s.single({ optional: true })).resolves.toEqual(1);
+            });
+
+            test("with atom false", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.ok(1));
+
+                expect(s.single({ atom: false })).resolves.toEqual(1);
+            });
+
+            test("with atom true", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.ok(1));
+
+                expect(s.single({ atom: true })).resolves.toEqual($.ok(1));
+            });
+        });
+
+        describe("single error atom", () => {
+            test("with no params", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.error(1));
+
+                expect(s.single()).rejects.toEqual(1);
+            });
+
+            test("with optional false", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.error(1));
+
+                expect(s.single({ optional: false })).rejects.toEqual(1);
+            });
+
+            test("with optional true", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.error(1));
+
+                expect(s.single({ optional: true })).rejects.toEqual(1);
+            });
+
+            test("with atom false", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.error(1));
+
+                expect(s.single({ atom: false })).rejects.toEqual(1);
+            });
+
+            test("with atom true", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.of($.error(1));
+
+                expect(s.single({ atom: true })).resolves.toEqual($.error(1));
+            });
+        });
+
+        describe("empty stream", () => {
+            test("with no params", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.from([]);
+
+                expect(s.single()).rejects.toThrow(WindpipeConsumptionError);
+            });
+
+            test("with optional false", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.from([]);
+
+                expect(s.single({ optional: false })).rejects.toThrow(WindpipeConsumptionError);
+            });
+
+            test("with optional true", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.from([]);
+
+                expect(s.single({ optional: true })).resolves.toEqual(undefined);
+            });
+
+            test("with atom false", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.from([]);
+
+                expect(s.single({ atom: false })).rejects.toThrow(WindpipeConsumptionError);
+            });
+
+            test("with atom true", async ({ expect }) => {
+                expect.assertions(1);
+
+                const s = $.from([]);
+
+                expect(s.single({ atom: true })).rejects.toThrow(WindpipeConsumptionError);
+            });
+        });
+
+        test("single pull", async ({ expect }) => {
+            expect.assertions(2);
+
+            const fn = vi.fn().mockReturnValue(Promise.resolve(1));
+
+            const s = $.fromNext(fn);
+
+            expect(s.single()).resolves.toEqual(1);
+            expect(fn).toBeCalledTimes(1);
         });
     });
 
