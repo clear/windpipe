@@ -262,10 +262,6 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
 
                 // Okay now race all the sources
                 const winner = await Promise.race(sources);
-
-                // Did we get a result from outer or inner?
-                // (we just duck-check to determine this since its simpler than tagging them)
-
                 // Is this an inner result? We add an `iterator` key to those
                 if (winner.type === 'inner') {
                     if (winner.done) {
