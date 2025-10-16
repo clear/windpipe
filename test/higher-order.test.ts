@@ -284,4 +284,26 @@ describe.concurrent("higher order streams", () => {
             expect(await s.toArray({ atoms: true })).toEqual([]);
         });
     });
+
+    describe.concurrent("merge", () => {
+        test("interleaves atoms", async ({ expect }) => {
+            expect.assertions(1);
+
+            const fast = $.from([1, 2]);
+            const slow = $.from([3, 4]).delay(100);
+            const s = $.from([slow, fast]).merge();
+
+            // We should expect to see fast then slow despite the order they are emitted from the outer stream
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3), $.ok(4)]);
+        })
+
+        test("no effect on already flat stream", async ({ expect }) => {
+            expect.assertions(1);
+
+            const s = $.from([1, 2, 3, 4]).merge();
+
+            // We should get all values in order
+            expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3), $.ok(4)]);
+        });
+    });
 });

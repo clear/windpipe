@@ -213,6 +213,107 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     }
 
     /**
+     * Produce a new stream from the stream that has any nested streams merged together, emitting their
+     * atoms as they are emitted.
+     *
+     * @note Any atoms that are not nested streams are emitted as-is
+     * @group Higher Order
+     */
+    merge(): T extends Stream<infer U, E> ? Stream<U, E> : Stream<T, E> {
+        this.trace("merge");
+
+        // @ts-ignore
+        return this.consume(async function* (it) {
+            // Get an iterator for the stream of streams
+            const outer = it[Symbol.asyncIterator]();
+
+            // Are we overall done with consuming the outer stream?
+            let outerExhausted = false;
+
+            // Keep a map from inner iterators to their pending next() promise
+            // we can race them to get the next value but we only remove then once resolved so we dont drop any values
+            const innerPending = new Map<
+                AsyncIterator<Atom<any, any>>,
+                Promise<IteratorResult<Atom<any, any>>>
+            >();
+
+            // While we either have outer atoms to pull yet or we are waiting for inner streams to exhaust
+            // keep looping and racing them
+            while (!outerExhausted || innerPending.size > 0) {
+                // We could race either a new nested stream from outer or a new atom from an inner
+                type OuterResult = IteratorResult<Atom<any, any>> & { type: "outer" };
+                type InnerResult = IteratorResult<Atom<any, any>> & {
+                    type: "inner";
+                    iterator: AsyncIterator<Atom<any, any>>;
+                };
+                type Source = Promise<OuterResult | InnerResult>;
+                const sources: Array<Source> = [];
+
+                // Is there still nested streams in outer?
+                if (!outerExhausted) {
+                    sources.push(outer.next().then((r) => ({ ...r, type: "outer" })));
+                }
+
+                // Are there active inner streams still?
+                // For each, we want to race their pending value
+                for (const [iterator, nextPromise] of innerPending) {
+                    sources.push(nextPromise.then((r) => ({ ...r, iterator, type: "inner" })));
+                }
+
+                // Anything left to wait on?
+                // (NOTE: unlikely to trigger since this is effectively the "while" condition)
+                if (sources.length === 0) {
+                    break;
+                }
+
+                // Okay now race all the sources
+                const winner = await Promise.race(sources);
+
+                // Did we get a result from outer or inner?
+                // (we just duck-check to determine this since its simpler than tagging them)
+
+                // Is this an inner result? We add an `iterator` key to those
+                if (winner.type === "inner") {
+                    if (winner.done) {
+                        // In practice, seems like no values are included on these results, so ignoring that
+                        innerPending.delete(winner.iterator);
+                    } else {
+                        // Yield the value and immediately call .next() to get the next one
+                        yield winner.value;
+                        innerPending.set(winner.iterator, winner.iterator.next());
+                    }
+
+                    continue;
+                }
+
+                // Is this an outer result?
+                if (winner.type === "outer") {
+                    if (winner.done) {
+                        // Double check: does this also have a value attached?
+                        outerExhausted = true;
+                    } else {
+                        const atom = winner.value;
+                        if (!isOk(atom)) {
+                            // If an error, just emit it
+                            yield atom;
+                        } else if (atom.value instanceof Stream) {
+                            // if a value and its a stream, start tracking it
+                            const iter = atom.value[Symbol.asyncIterator]();
+                            innerPending.set(iter, iter.next());
+                        } else {
+                            // If a value and not a stream, just emit it
+                            yield atom;
+                        }
+                    }
+                    continue;
+                }
+
+                throw new Error("invalid result. unreachable");
+            }
+        });
+    }
+
+    /**
      * Base implementation of the `flatTap` operations.
      */
     private flatTapAtom<A>(
