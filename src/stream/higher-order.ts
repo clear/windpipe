@@ -222,7 +222,6 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
     merge(): T extends Stream<infer U, E> ? Stream<U, E> : Stream<T, E> {
         this.trace("merge");
 
-        // @ts-ignore
         return this.consume(async function* (it) {
             // Get an iterator for the stream of streams
             const outer = it[Symbol.asyncIterator]();
@@ -233,18 +232,18 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
             // Keep a map from inner iterators to their pending next() promise
             // we can race them to get the next value but we only remove then once resolved so we dont drop any values
             const innerPending = new Map<
-                AsyncIterator<Atom<any, any>>,
-                Promise<IteratorResult<Atom<any, any>>>
+                AsyncIterator<Atom<unknown, unknown>>,
+                Promise<IteratorResult<Atom<unknown, unknown>>>
             >();
 
             // While we either have outer atoms to pull yet or we are waiting for inner streams to exhaust
             // keep looping and racing them
             while (!outerExhausted || innerPending.size > 0) {
                 // We could race either a new nested stream from outer or a new atom from an inner
-                type OuterResult = IteratorResult<Atom<any, any>> & { type: "outer" };
-                type InnerResult = IteratorResult<Atom<any, any>> & {
+                type OuterResult = IteratorResult<Atom<unknown, unknown>> & { type: "outer" };
+                type InnerResult = IteratorResult<Atom<unknown, unknown>> & {
                     type: "inner";
-                    iterator: AsyncIterator<Atom<any, any>>;
+                    iterator: AsyncIterator<Atom<unknown, unknown>>;
                 };
                 type Source = Promise<OuterResult | InnerResult>;
                 const sources: Array<Source> = [];
@@ -268,10 +267,6 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
 
                 // Okay now race all the sources
                 const winner = await Promise.race(sources);
-
-                // Did we get a result from outer or inner?
-                // (we just duck-check to determine this since its simpler than tagging them)
-
                 // Is this an inner result? We add an `iterator` key to those
                 if (winner.type === "inner") {
                     if (winner.done) {
@@ -289,7 +284,6 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
                 // Is this an outer result?
                 if (winner.type === "outer") {
                     if (winner.done) {
-                        // Double check: does this also have a value attached?
                         outerExhausted = true;
                     } else {
                         const atom = winner.value;
@@ -310,7 +304,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
 
                 throw new Error("invalid result. unreachable");
             }
-        });
+        }) as T extends Stream<infer U, E> ? Stream<U, E> : Stream<T, E>;
     }
 
     /**

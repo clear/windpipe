@@ -295,7 +295,7 @@ describe.concurrent("higher order streams", () => {
 
             // We should expect to see fast then slow despite the order they are emitted from the outer stream
             expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3), $.ok(4)]);
-        })
+        });
 
         test("no effect on already flat stream", async ({ expect }) => {
             expect.assertions(1);
