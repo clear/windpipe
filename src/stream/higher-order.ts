@@ -282,7 +282,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
 
                 // Is this an outer result?
                 if (winner.type === 'outer') {
-                    if (winner.done) { // Double check: does this also have a value attached?
+                    if (winner.done) {
                         outerExhausted = true;
                     } else {
                         const atom = winner.value;
