@@ -230,7 +230,7 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
             let outerExhausted = false;
 
             // Keep a map from inner iterators to their pending next() promise
-            // we can race them to get the next value but we only remove then once resolved so we dont drop any values
+            // we can race them to get the next value but we only remove them once resolved so we dont drop any values
             const innerPending = new Map<
                 AsyncIterator<Atom<unknown, unknown>>,
                 Promise<IteratorResult<Atom<unknown, unknown>>>
