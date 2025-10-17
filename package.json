@@ -45,7 +45,6 @@
     "@eslint/js": "^9.0.0",
     "@types/highland": "^2.13.0",
     "@types/node": "^20.10.7",
-    "@vitest/ui": "^3.2.4",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.1.3",
