@@ -297,6 +297,40 @@ describe.concurrent("higher order streams", () => {
             expect(await s.toArray({ atoms: true })).toEqual([$.ok(1), $.ok(2), $.ok(3), $.ok(4)]);
         });
 
+        test("interleaves many atoms, we get them all", async ({ expect }) => {
+            expect.assertions(1);
+
+            // Create a bunch of streams with different delays
+            const LEN = 10;
+            const STREAM_COUNT = 5;
+            const streams = $.fromArray([10, 20, 30, 50, 15]).map((delay) =>
+                $.fromArray(Array.from({ length: LEN }, (_) => 1)).delay(delay),
+            );
+
+            // Merge them and get all the atoms
+            const atoms = await streams.merge().toArray({ atoms: true });
+
+            // We should expect to see fast then slow despite the order they are emitted from the outer stream
+            expect(atoms.length).toEqual(LEN * STREAM_COUNT);
+        });
+
+        test("interleaves many atoms from slow outer, we get them all", async ({ expect }) => {
+            expect.assertions(1);
+
+            // Create a bunch of streams with different delays
+            const LEN = 10;
+            const STREAM_COUNT = 5;
+            const streams = $.fromArray([10, 20, 30, 50, 15])
+                .map((delay) => $.fromArray(Array.from({ length: LEN }, (_) => 1)).delay(delay))
+                .delay(100);
+
+            // Merge them and get all the atoms
+            const atoms = await streams.merge().toArray({ atoms: true });
+
+            // We should expect to see fast then slow despite the order they are emitted from the outer stream
+            expect(atoms.length).toEqual(LEN * STREAM_COUNT);
+        });
+
         test("no effect on already flat stream", async ({ expect }) => {
             expect.assertions(1);
 
