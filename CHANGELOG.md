@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.13.0
+
+### Minor Changes
+
+- c6e43cd: Implement Stream.merge()
+
 ## 0.12.0
 
 ### Minor Changes
