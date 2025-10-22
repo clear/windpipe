@@ -1,5 +1,11 @@
 # windpipe
 
+## 0.13.1
+
+### Patch Changes
+
+- f1f6f1f: Fix .merge() failing on slow streams
+
 ## 0.13.0
 
 ### Minor Changes
