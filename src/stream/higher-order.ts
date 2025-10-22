@@ -226,6 +226,9 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
             // Get an iterator for the stream of streams
             const outer = it[Symbol.asyncIterator]();
 
+            // Keep track of the pending value from the outer stream
+            let outerPending = null;
+
             // Are we overall done with consuming the outer stream?
             let outerExhausted = false;
 
@@ -250,7 +253,13 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
 
                 // Is there still nested streams in outer?
                 if (!outerExhausted) {
-                    sources.push(outer.next().then((r) => ({ ...r, type: "outer" })));
+                    // Make sure we have something to await
+                    if (outerPending === null) {
+                        outerPending = outer.next();
+                    }
+
+                    // and use it as a source
+                    sources.push(outerPending.then((r) => ({ ...r, type: "outer" })));
                 }
 
                 // Are there active inner streams still?
@@ -283,6 +292,10 @@ export class HigherOrderStream<T, E> extends StreamTransforms<T, E> {
 
                 // Is this an outer result?
                 if (winner.type === "outer") {
+                    // Unset the pending value
+                    outerPending = null;
+
+                    // Handle the result
                     if (winner.done) {
                         outerExhausted = true;
                     } else {
