@@ -6,10 +6,12 @@
   "scripts": {
     "lint": "tsc && eslint .",
     "format": "eslint --fix .",
-    "build": "tsup ./src/index.ts",
     "doc": "typedoc ./src --media ./media --plugin typedoc-plugin-extras --favicon ./media/logo.png --footerLastModified true --plugin typedoc-material-theme --themeColor '#03284e' --plugin typedoc-plugin-rename-defaults",
     "test": "vitest",
-    "ci:release": "npm run build && changeset publish"
+    "build": "rm -rf dist && pnpm run build:js && pnpm run build:types",
+    "build:js": "node build.mjs",
+    "build:types": "tsc -p tsconfig.types.json",
+    "ci:release": "pnpm run build && changeset publish"
   },
   "keywords": [],
   "files": [
@@ -20,14 +22,12 @@
   "types": "./dist/index.d.cts",
   "exports": {
     ".": {
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.js"
-      },
-      "require": {
-        "types": "./dist/index.d.cts",
-        "default": "./dist/index.cjs"
-      }
+     "types": {
+       "import": "./dist/index.d.ts",
+       "require": "./dist/index.d.cts"
+     },
+     "import": "./dist/index.js",
+     "require": "./dist/index.cjs"
     }
   },
   "author": {
@@ -52,7 +52,6 @@
     "highland": "^2.13.5",
     "npm-run-all": "^4.1.5",
     "prettier": "3.2.5",
-    "tsup": "^8.0.1",
     "typedoc": "^0.25.7",
     "typedoc-material-theme": "^1.0.2",
     "typedoc-plugin-extras": "^3.0.0",
