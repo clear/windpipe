@@ -22,7 +22,7 @@ jobs:
     - name: Install pnpm
       uses: pnpm/action-setup@v4
 
-    - run: pnpm ci
+    - run: pnpm i
     - run: pnpm run build
     - run: pnpm test
 
